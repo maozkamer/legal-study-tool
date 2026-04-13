@@ -5,6 +5,9 @@ from flask import Flask, request, render_template, jsonify
 
 import PyPDF2
 from pptx import Presentation
+from docx import Document
+from PIL import Image
+import pytesseract
 import anthropic
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
@@ -40,6 +43,31 @@ def extract_text_pptx(file_bytes: bytes) -> str:
                     if line:
                         parts.append(line)
     return "\n".join(parts)
+
+
+def extract_text_docx(file_bytes: bytes) -> str:
+    doc = Document(io.BytesIO(file_bytes))
+    parts = [para.text.strip() for para in doc.paragraphs if para.text.strip()]
+    return "\n".join(parts)
+
+
+def extract_text_txt(file_bytes: bytes) -> str:
+    for encoding in ("utf-8", "windows-1255", "iso-8859-8", "latin-1"):
+        try:
+            return file_bytes.decode(encoding)
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return file_bytes.decode("utf-8", errors="replace")
+
+
+def extract_text_image(file_bytes: bytes) -> str:
+    image = Image.open(io.BytesIO(file_bytes))
+    # Try Hebrew + English; fall back to English-only if Hebrew data not installed
+    try:
+        text = pytesseract.image_to_string(image, lang="heb+eng")
+    except pytesseract.TesseractError:
+        text = pytesseract.image_to_string(image, lang="eng")
+    return text
 
 
 # ─────────────────────────────────────────────────────────────
@@ -133,7 +161,7 @@ def summarize(doc_type: str, text: str) -> str:
     prompt = build_prompt(doc_type, text)
 
     message = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-opus-4-5",
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -163,8 +191,14 @@ def upload():
             text = extract_text_pdf(file_bytes)
         elif filename.endswith(".pptx"):
             text = extract_text_pptx(file_bytes)
+        elif filename.endswith(".docx"):
+            text = extract_text_docx(file_bytes)
+        elif filename.endswith(".txt"):
+            text = extract_text_txt(file_bytes)
+        elif filename.endswith((".png", ".jpg", ".jpeg")):
+            text = extract_text_image(file_bytes)
         else:
-            return jsonify({"error": "סוג קובץ לא נתמך. אנא העלה PDF או PPTX"}), 400
+            return jsonify({"error": "סוג קובץ לא נתמך. קבצים נתמכים: PDF, PPTX, DOCX, TXT, PNG, JPG"}), 400
     except Exception as exc:
         log.error("Extraction error: %s", exc)
         return jsonify({"error": f"שגיאה בקריאת הקובץ: {exc}"}), 500

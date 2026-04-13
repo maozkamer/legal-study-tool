@@ -203,10 +203,10 @@
 <div class="card">
   <!-- Upload zone -->
   <div class="upload-zone" id="drop-zone">
-    <input type="file" id="file-input" accept=".pdf,.pptx" />
+    <input type="file" id="file-input" accept=".pdf,.pptx,.docx,.txt,.png,.jpg,.jpeg" />
     <div class="upload-icon">📂</div>
     <div class="upload-title">גרור קובץ לכאן או לחץ לבחירה</div>
-    <div class="upload-sub">PDF או PPTX · עד 20MB</div>
+    <div class="upload-sub">קבצים נתמכים: PDF, PPTX, DOCX, TXT, PNG, JPG · עד 20MB</div>
   </div>
 
   <div id="file-label"></div>
@@ -249,7 +249,7 @@
   function setFile(file) {
     if (!file) return;
     const ext = file.name.split(".").pop().toLowerCase();
-    if (!["pdf", "pptx"].includes(ext)) {
+    if (!["pdf", "pptx", "docx", "txt", "png", "jpg", "jpeg"].includes(ext)) {
       showError("סוג קובץ לא נתמך. אנא בחר קובץ PDF או PPTX.");
       return;
     }
