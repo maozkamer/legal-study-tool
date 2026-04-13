@@ -156,6 +156,45 @@
     /* Markdown-style bold */
     .summary-box strong { color: #7ec8e3; font-weight: 700; }
 
+    /* ── Extra actions ── */
+    .actions-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .btn-action {
+      flex: 1;
+      padding: 12px 8px;
+      background: rgba(74, 144, 217, 0.12);
+      color: #a8d0f0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: 1.5px solid #2a5298;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-action:hover:not(:disabled) {
+      background: rgba(74, 144, 217, 0.22);
+      transform: translateY(-1px);
+    }
+    .btn-action:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* ── Extra result panel ── */
+    #extra-result {
+      display: none;
+      margin-top: 24px;
+      background: #0d1b2a;
+      border: 1px solid #1e3a5f;
+      border-radius: 12px;
+      padding: 24px;
+      line-height: 1.8;
+      font-size: 0.97rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    #extra-result strong { color: #7ec8e3; font-weight: 700; }
+
     .btn-reset {
       display: block;
       width: 100%;
@@ -226,6 +265,22 @@
   <div id="result">
     <div class="doc-badge" id="doc-badge"></div>
     <div class="summary-box" id="summary-box"></div>
+
+    <!-- Extra actions -->
+    <div class="actions-row">
+      <button class="btn-action" id="questions-btn">📝 צור שאלות לבחינה</button>
+      <button class="btn-action" id="flashcards-btn">🃏 צור כרטיסיות חזרה</button>
+    </div>
+
+    <!-- Extra spinner -->
+    <div class="spinner-wrap" id="extra-spinner">
+      <div class="spinner"></div>
+      <div class="spinner-text" id="extra-spinner-text">יוצר...</div>
+    </div>
+
+    <!-- Extra result -->
+    <div id="extra-result"></div>
+
     <button class="btn-reset" id="reset-btn">⬆️ העלה מסמך נוסף</button>
   </div>
 </div>
@@ -233,24 +288,30 @@
 <footer>מופעל על ידי Claude AI · לצרכי לימוד בלבד</footer>
 
 <script>
-  const fileInput  = document.getElementById("file-input");
-  const dropZone   = document.getElementById("drop-zone");
-  const fileLabel  = document.getElementById("file-label");
-  const uploadBtn  = document.getElementById("upload-btn");
-  const spinner    = document.getElementById("spinner");
-  const errorBox   = document.getElementById("error-box");
-  const result     = document.getElementById("result");
-  const docBadge   = document.getElementById("doc-badge");
-  const summaryBox = document.getElementById("summary-box");
-  const resetBtn   = document.getElementById("reset-btn");
+  const fileInput       = document.getElementById("file-input");
+  const dropZone        = document.getElementById("drop-zone");
+  const fileLabel       = document.getElementById("file-label");
+  const uploadBtn       = document.getElementById("upload-btn");
+  const spinner         = document.getElementById("spinner");
+  const errorBox        = document.getElementById("error-box");
+  const result          = document.getElementById("result");
+  const docBadge        = document.getElementById("doc-badge");
+  const summaryBox      = document.getElementById("summary-box");
+  const resetBtn        = document.getElementById("reset-btn");
+  const questionsBtn    = document.getElementById("questions-btn");
+  const flashcardsBtn   = document.getElementById("flashcards-btn");
+  const extraSpinner    = document.getElementById("extra-spinner");
+  const extraSpinnerTxt = document.getElementById("extra-spinner-text");
+  const extraResult     = document.getElementById("extra-result");
 
   let selectedFile = null;
+  let docToken     = null;
 
   function setFile(file) {
     if (!file) return;
     const ext = file.name.split(".").pop().toLowerCase();
     if (!["pdf", "pptx", "docx", "txt"].includes(ext)) {
-      showError("סוג קובץ לא נתמך. אנא בחר קובץ PDF או PPTX.");
+      showError("סוג קובץ לא נתמך. אנא בחר קובץ PDF, PPTX, DOCX או TXT.");
       return;
     }
     selectedFile = file;
@@ -261,7 +322,6 @@
 
   fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
 
-  // Drag & drop
   dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
   dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
   dropZone.addEventListener("drop", e => {
@@ -272,8 +332,6 @@
 
   uploadBtn.addEventListener("click", async () => {
     if (!selectedFile) return;
-
-    // UI: show spinner, hide everything else
     uploadBtn.disabled = true;
     spinner.classList.add("visible");
     result.style.display = "none";
@@ -283,18 +341,17 @@
     formData.append("file", selectedFile);
 
     try {
-      const res = await fetch("/upload", { method: "POST", body: formData });
+      const res  = await fetch("/upload", { method: "POST", body: formData });
       const data = await res.json();
+      if (!res.ok || data.error) { showError(data.error || "אירעה שגיאה בלתי צפויה"); return; }
 
-      if (!res.ok || data.error) {
-        showError(data.error || "אירעה שגיאה בלתי צפויה");
-        return;
-      }
-
-      docBadge.innerHTML = `${data.icon} ${data.label}`;
-      summaryBox.innerHTML = renderMarkdown(data.summary);
-      result.style.display = "block";
-    } catch (err) {
+      docToken = data.token;
+      docBadge.innerHTML         = `${data.icon} ${data.label}`;
+      summaryBox.innerHTML       = renderMarkdown(data.summary);
+      extraResult.style.display  = "none";
+      extraResult.innerHTML      = "";
+      result.style.display       = "block";
+    } catch {
       showError("שגיאת רשת — אנא נסה שוב");
     } finally {
       spinner.classList.remove("visible");
@@ -302,24 +359,53 @@
     }
   });
 
+  async function runExtra(endpoint, spinnerText) {
+    if (!docToken) return;
+    questionsBtn.disabled  = true;
+    flashcardsBtn.disabled = true;
+    extraSpinnerTxt.textContent = spinnerText;
+    extraSpinner.classList.add("visible");
+    extraResult.style.display = "none";
+
+    try {
+      const res  = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: docToken }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) { showError(data.error || "שגיאה"); return; }
+      extraResult.innerHTML     = renderMarkdown(data.result);
+      extraResult.style.display = "block";
+    } catch {
+      showError("שגיאת רשת — אנא נסה שוב");
+    } finally {
+      extraSpinner.classList.remove("visible");
+      questionsBtn.disabled  = false;
+      flashcardsBtn.disabled = false;
+    }
+  }
+
+  questionsBtn.addEventListener("click",  () => runExtra("/questions",  "יוצר שאלות לבחינה..."));
+  flashcardsBtn.addEventListener("click", () => runExtra("/flashcards", "יוצר כרטיסיות חזרה..."));
+
   resetBtn.addEventListener("click", () => {
     selectedFile = null;
-    fileInput.value = "";
-    fileLabel.textContent = "";
-    uploadBtn.disabled = true;
-    result.style.display = "none";
+    docToken     = null;
+    fileInput.value           = "";
+    fileLabel.textContent     = "";
+    uploadBtn.disabled        = true;
+    result.style.display      = "none";
+    extraResult.style.display = "none";
     hideError();
   });
 
   function showError(msg) {
-    errorBox.textContent = "❌ " + msg;
-    errorBox.style.display = "block";
+    errorBox.textContent     = "❌ " + msg;
+    errorBox.style.display   = "block";
   }
-  function hideError() {
-    errorBox.style.display = "none";
-  }
+  function hideError() { errorBox.style.display = "none"; }
 
-  // Minimal markdown: **bold** → <strong>
   function renderMarkdown(text) {
     return text
       .replace(/&/g, "&amp;")

@@ -1,5 +1,6 @@
 import os
 import io
+import uuid
 import logging
 from flask import Flask, request, render_template, jsonify
 import PyPDF2
@@ -14,6 +15,10 @@ app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20 MB
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+# In-memory text cache: token → extracted text (up to 50 entries)
+_TEXT_CACHE: dict[str, str] = {}
+_MAX_CACHE  = 50
 
 
 # ─────────────────────────────────────────────────────────────
@@ -171,8 +176,87 @@ def upload():
         log.error("Claude error: %s", exc)
         return jsonify({"error": f"שגיאה בסיכום: {exc}"}), 500
 
+    # Cache text for questions / flashcards endpoints
+    token = str(uuid.uuid4())
+    if len(_TEXT_CACHE) >= _MAX_CACHE:
+        oldest = next(iter(_TEXT_CACHE))
+        del _TEXT_CACHE[oldest]
+    _TEXT_CACHE[token] = text[:12000]
+
     icon, label = TYPE_LABELS[doc_type]
-    return jsonify({"icon": icon, "label": label, "summary": summary})
+    return jsonify({"icon": icon, "label": label, "summary": summary, "token": token})
+
+
+def _claude(prompt: str) -> str:
+    response = client.messages.create(
+        model="claude-opus-4-5",
+        max_tokens=2048,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.content[0].text
+
+
+@app.route("/questions", methods=["POST"])
+def questions():
+    token = (request.json or {}).get("token", "")
+    text  = _TEXT_CACHE.get(token)
+    if not text:
+        return jsonify({"error": "הסשן פג תוקף — אנא העלה את הקובץ מחדש"}), 400
+
+    prompt = (
+        "אתה עוזר לימודים משפטי. צור 10 שאלות לבחינה בעברית מהחומר הבא.\n"
+        "5 שאלות אמריקאיות (עם 4 תשובות, אחת נכונה) ו-5 שאלות פתוחות.\n"
+        "השתמש בפורמט הזה בדיוק:\n\n"
+        "📝 שאלות לבחינה\n\n"
+        "שאלות אמריקאיות:\n"
+        "1. [שאלה]?\n"
+        "א. [תשובה]\n"
+        "ב. [תשובה]\n"
+        "ג. [תשובה]\n"
+        "ד. [תשובה]\n"
+        "✅ תשובה נכונה: א\n\n"
+        "(חזור על הפורמט לשאלות 2-5)\n\n"
+        "שאלות פתוחות:\n"
+        "1. [שאלה]?\n"
+        "💡 תשובה מנחה: [תשובה קצרה]\n\n"
+        "(חזור על הפורמט לשאלות 2-5)\n\n"
+        "---\n\n" + text
+    )
+
+    try:
+        return jsonify({"result": _claude(prompt)})
+    except Exception as exc:
+        log.error("Questions error: %s", exc)
+        return jsonify({"error": f"שגיאה ביצירת שאלות: {exc}"}), 500
+
+
+@app.route("/flashcards", methods=["POST"])
+def flashcards():
+    token = (request.json or {}).get("token", "")
+    text  = _TEXT_CACHE.get(token)
+    if not text:
+        return jsonify({"error": "הסשן פג תוקף — אנא העלה את הקובץ מחדש"}), 400
+
+    prompt = (
+        "אתה עוזר לימודים משפטי. צור 10 כרטיסיות חזרה בעברית מהחומר הבא.\n"
+        "כל כרטיסייה: שאלה קצרה מצד אחד, תשובה קצרה מצד שני.\n"
+        "השתמש בפורמט הזה בדיוק:\n\n"
+        "🃏 כרטיסיות חזרה\n\n"
+        "כרטיסייה 1:\n"
+        "❓ שאלה: [שאלה קצרה]\n"
+        "💡 תשובה: [תשובה קצרה]\n\n"
+        "כרטיסייה 2:\n"
+        "❓ שאלה: [שאלה קצרה]\n"
+        "💡 תשובה: [תשובה קצרה]\n\n"
+        "(המשך עד כרטיסייה 10)\n\n"
+        "---\n\n" + text
+    )
+
+    try:
+        return jsonify({"result": _claude(prompt)})
+    except Exception as exc:
+        log.error("Flashcards error: %s", exc)
+        return jsonify({"error": f"שגיאה ביצירת כרטיסיות: {exc}"}), 500
 
 
 if __name__ == "__main__":
