@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>עוזר הלימודים המשפטי שלי</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #0d1b2a;
+      color: #e8edf2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 60px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    header .logo { font-size: 2.6rem; margin-bottom: 8px; }
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+    header p {
+      margin-top: 8px;
+      color: #8fa8c0;
+      font-size: 1rem;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #132238;
+      border: 1px solid #1e3a5f;
+      border-radius: 16px;
+      padding: 36px;
+      width: 100%;
+      max-width: 680px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    /* ── Upload zone ── */
+    .upload-zone {
+      border: 2px dashed #2a5298;
+      border-radius: 12px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+      border-color: #4a90d9;
+      background: rgba(74, 144, 217, 0.06);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .upload-icon { font-size: 3rem; margin-bottom: 12px; }
+    .upload-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #c9dff2;
+      margin-bottom: 6px;
+    }
+    .upload-sub { color: #6a8aa8; font-size: 0.9rem; }
+
+    /* ── Button ── */
+    .btn-upload {
+      display: block;
+      width: 100%;
+      margin-top: 24px;
+      padding: 14px;
+      background: linear-gradient(135deg, #1a5fb4, #2a79d5);
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-upload:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── File selected label ── */
+    #file-label {
+      margin-top: 14px;
+      font-size: 0.9rem;
+      color: #4a90d9;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    /* ── Spinner ── */
+    .spinner-wrap {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      margin-top: 32px;
+    }
+    .spinner-wrap.visible { display: flex; }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 4px solid #1e3a5f;
+      border-top-color: #4a90d9;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-text { color: #8fa8c0; font-size: 0.95rem; }
+
+    /* ── Result ── */
+    #result { display: none; margin-top: 36px; }
+
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(74, 144, 217, 0.15);
+      border: 1px solid #2a5298;
+      border-radius: 24px;
+      padding: 6px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #a8d0f0;
+      margin-bottom: 20px;
+    }
+
+    .summary-box {
+      background: #0d1b2a;
+      border: 1px solid #1e3a5f;
+      border-radius: 12px;
+      padding: 24px;
+      line-height: 1.8;
+      font-size: 0.97rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Markdown-style bold */
+    .summary-box strong { color: #7ec8e3; font-weight: 700; }
+
+    .btn-reset {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px;
+      background: transparent;
+      color: #4a90d9;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: 1.5px solid #2a5298;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-reset:hover { background: rgba(74, 144, 217, 0.08); }
+
+    /* ── Error ── */
+    .error-box {
+      background: rgba(220, 53, 69, 0.12);
+      border: 1px solid rgba(220, 53, 69, 0.4);
+      border-radius: 10px;
+      padding: 16px 20px;
+      color: #f5a0a8;
+      margin-top: 24px;
+      display: none;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 48px;
+      color: #3a5a78;
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚖️</div>
+  <h1>עוזר הלימודים המשפטי שלי</h1>
+  <p>העלה פסק דין, חקיקה או חומר לימוד — וקבל סיכום חכם מיד</p>
+</header>
+
+<div class="card">
+  <!-- Upload zone -->
+  <div class="upload-zone" id="drop-zone">
+    <input type="file" id="file-input" accept=".pdf,.pptx" />
+    <div class="upload-icon">📂</div>
+    <div class="upload-title">גרור קובץ לכאן או לחץ לבחירה</div>
+    <div class="upload-sub">PDF או PPTX · עד 20MB</div>
+  </div>
+
+  <div id="file-label"></div>
+
+  <button class="btn-upload" id="upload-btn" disabled>סכם את המסמך</button>
+
+  <!-- Spinner -->
+  <div class="spinner-wrap" id="spinner">
+    <div class="spinner"></div>
+    <div class="spinner-text">מנתח את המסמך... זה עשוי לקחת כמה שניות</div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="error-box"></div>
+
+  <!-- Result -->
+  <div id="result">
+    <div class="doc-badge" id="doc-badge"></div>
+    <div class="summary-box" id="summary-box"></div>
+    <button class="btn-reset" id="reset-btn">⬆️ העלה מסמך נוסף</button>
+  </div>
+</div>
+
+<footer>מופעל על ידי Claude AI · לצרכי לימוד בלבד</footer>
+
+<script>
+  const fileInput  = document.getElementById("file-input");
+  const dropZone   = document.getElementById("drop-zone");
+  const fileLabel  = document.getElementById("file-label");
+  const uploadBtn  = document.getElementById("upload-btn");
+  const spinner    = document.getElementById("spinner");
+  const errorBox   = document.getElementById("error-box");
+  const result     = document.getElementById("result");
+  const docBadge   = document.getElementById("doc-badge");
+  const summaryBox = document.getElementById("summary-box");
+  const resetBtn   = document.getElementById("reset-btn");
+
+  let selectedFile = null;
+
+  function setFile(file) {
+    if (!file) return;
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["pdf", "pptx"].includes(ext)) {
+      showError("סוג קובץ לא נתמך. אנא בחר קובץ PDF או PPTX.");
+      return;
+    }
+    selectedFile = file;
+    fileLabel.textContent = `📄 ${file.name}`;
+    uploadBtn.disabled = false;
+    hideError();
+  }
+
+  fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
+
+  // Drag & drop
+  dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+  dropZone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+    setFile(e.dataTransfer.files[0]);
+  });
+
+  uploadBtn.addEventListener("click", async () => {
+    if (!selectedFile) return;
+
+    // UI: show spinner, hide everything else
+    uploadBtn.disabled = true;
+    spinner.classList.add("visible");
+    result.style.display = "none";
+    hideError();
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    try {
+      const res = await fetch("/upload", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        showError(data.error || "אירעה שגיאה בלתי צפויה");
+        return;
+      }
+
+      docBadge.innerHTML = `${data.icon} ${data.label}`;
+      summaryBox.innerHTML = renderMarkdown(data.summary);
+      result.style.display = "block";
+    } catch (err) {
+      showError("שגיאת רשת — אנא נסה שוב");
+    } finally {
+      spinner.classList.remove("visible");
+      uploadBtn.disabled = false;
+    }
+  });
+
+  resetBtn.addEventListener("click", () => {
+    selectedFile = null;
+    fileInput.value = "";
+    fileLabel.textContent = "";
+    uploadBtn.disabled = true;
+    result.style.display = "none";
+    hideError();
+  });
+
+  function showError(msg) {
+    errorBox.textContent = "❌ " + msg;
+    errorBox.style.display = "block";
+  }
+  function hideError() {
+    errorBox.style.display = "none";
+  }
+
+  // Minimal markdown: **bold** → <strong>
+  function renderMarkdown(text) {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\n/g, "<br>");
+  }
+</script>
+</body>
+</html>
