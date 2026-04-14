@@ -6,332 +6,320 @@
   <title>עוזר הלימודים המשפטי</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:        #0d1b2a;
-      --card:      #132238;
-      --border:    #1e3a5f;
-      --accent:    #2a79d5;
-      --accent-lt: #4a90d9;
-      --text:      #e8edf2;
-      --muted:     #8fa8c0;
-      --green:     #27ae60;
-      --red:       #e74c3c;
-      --touch:     48px;   /* minimum tap target */
+      --bg:     #0d1b2a; --card:   #132238; --border: #1e3a5f;
+      --accent: #2a79d5; --lt:     #4a90d9; --text:   #e8edf2;
+      --muted:  #8fa8c0; --green:  #27ae60; --red:    #e74c3c;
+      --yellow: #f39c12; --touch:  48px;
     }
+    body { font-family:"Segoe UI",Arial,sans-serif; background:var(--bg); color:var(--text);
+           min-height:100vh; display:flex; flex-direction:column; align-items:center;
+           padding:0 0 64px; }
 
-    html { font-size: 16px; }
+    /* ── Top nav ── */
+    nav { width:100%; background:var(--card); border-bottom:1px solid var(--border);
+          display:flex; align-items:center; justify-content:space-between;
+          padding:12px 20px; position:sticky; top:0; z-index:100; }
+    nav .brand { font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:8px; }
+    nav .nav-btn { background:rgba(74,144,217,.12); border:1.5px solid #2a5298;
+                   color:#a8d0f0; border-radius:8px; padding:8px 14px;
+                   font-size:.9rem; font-weight:600; cursor:pointer; min-height:40px; }
+    nav .nav-btn:hover { background:rgba(74,144,217,.22); }
 
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 28px 12px 64px;
-    }
-
-    /* ── Header ── */
-    header { text-align: center; margin-bottom: 28px; }
-    header .logo { font-size: 2.4rem; margin-bottom: 6px; }
-    header h1   { font-size: 1.75rem; font-weight: 700; color: #fff; }
-    header p    { margin-top: 6px; color: var(--muted); font-size: 0.95rem; }
-
-    /* ── Card ── */
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px 20px;
-      width: 100%;
-      max-width: 680px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-    }
+    /* ── Main card ── */
+    .card { background:var(--card); border:1px solid var(--border); border-radius:16px;
+            padding:24px 20px; width:100%; max-width:680px;
+            box-shadow:0 8px 32px rgba(0,0,0,.4); margin-top:28px; }
 
     /* ── Upload zone ── */
-    .upload-zone {
-      border: 2px dashed #2a5298;
-      border-radius: 12px;
-      padding: 40px 16px;
-      text-align: center;
-      cursor: pointer;
-      position: relative;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    .upload-zone:hover, .upload-zone.drag-over {
-      border-color: var(--accent-lt);
-      background: rgba(74,144,217,0.06);
-    }
-    .upload-zone input[type="file"] {
-      position: absolute; inset: 0; opacity: 0;
-      cursor: pointer; width: 100%; height: 100%;
-    }
-    .upload-icon  { font-size: 2.8rem; margin-bottom: 10px; }
-    .upload-title { font-size: 1.1rem; font-weight: 600; color: #c9dff2; margin-bottom: 4px; }
-    .upload-sub   { color: #6a8aa8; font-size: 0.88rem; }
+    .upload-zone { border:2px dashed #2a5298; border-radius:12px; padding:40px 16px;
+                   text-align:center; cursor:pointer; position:relative;
+                   transition:border-color .2s,background .2s; }
+    .upload-zone:hover,.upload-zone.drag-over { border-color:var(--lt); background:rgba(74,144,217,.06); }
+    .upload-zone input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .upload-icon  { font-size:2.8rem; margin-bottom:10px; }
+    .upload-title { font-size:1.1rem; font-weight:600; color:#c9dff2; margin-bottom:4px; }
+    .upload-sub   { color:#6a8aa8; font-size:.88rem; }
+    #file-label   { margin-top:12px; font-size:.9rem; color:var(--lt); text-align:center; min-height:20px; }
 
-    #file-label {
-      margin-top: 12px; font-size: 0.9rem;
-      color: var(--accent-lt); text-align: center; min-height: 20px;
-    }
-
-    /* ── Buttons (all ≥ 48px height) ── */
-    .btn {
-      display: flex; align-items: center; justify-content: center;
-      width: 100%; min-height: var(--touch);
-      padding: 12px 16px;
-      font-size: 1rem; font-weight: 600;
-      border: none; border-radius: 10px;
-      cursor: pointer;
-      transition: opacity 0.2s, transform 0.1s;
-    }
-    .btn:active:not(:disabled) { transform: scale(0.98); }
-    .btn:disabled              { opacity: 0.45; cursor: not-allowed; }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #1a5fb4, var(--accent));
-      color: #fff; margin-top: 20px;
-    }
-    .btn-primary:hover:not(:disabled) { opacity: 0.88; }
-
-    .btn-outline {
-      background: rgba(74,144,217,0.1);
-      color: #a8d0f0;
-      border: 1.5px solid #2a5298;
-    }
-    .btn-outline:hover:not(:disabled) { background: rgba(74,144,217,0.2); }
-
-    .btn-ghost {
-      background: transparent; color: var(--accent-lt);
-      border: 1.5px solid #2a5298; margin-top: 16px;
-    }
-    .btn-ghost:hover { background: rgba(74,144,217,0.08); }
-
-    /* ── Actions row ── */
-    .actions-row {
-      display: flex; gap: 10px; margin-top: 16px;
-    }
-    .actions-row .btn { font-size: 0.95rem; }
+    /* ── Generic buttons ── */
+    .btn { display:flex; align-items:center; justify-content:center; width:100%;
+           min-height:var(--touch); padding:12px 16px; font-size:1rem; font-weight:600;
+           border:none; border-radius:10px; cursor:pointer;
+           transition:opacity .2s,transform .1s; }
+    .btn:active:not(:disabled) { transform:scale(.98); }
+    .btn:disabled { opacity:.45; cursor:not-allowed; }
+    .btn-primary  { background:linear-gradient(135deg,#1a5fb4,var(--accent)); color:#fff; margin-top:20px; }
+    .btn-primary:hover:not(:disabled) { opacity:.88; }
+    .btn-outline  { background:rgba(74,144,217,.1); color:#a8d0f0; border:1.5px solid #2a5298; }
+    .btn-outline:hover:not(:disabled) { background:rgba(74,144,217,.2); }
+    .btn-ghost    { background:transparent; color:var(--lt); border:1.5px solid #2a5298; margin-top:16px; }
+    .btn-ghost:hover { background:rgba(74,144,217,.08); }
+    .btn-green    { background:rgba(39,174,96,.2); color:#6fcf97; border:1.5px solid var(--green); }
+    .btn-green:hover:not(:disabled) { background:rgba(39,174,96,.3); }
+    .actions-row  { display:flex; gap:10px; margin-top:16px; }
+    .actions-row .btn { font-size:.9rem; }
 
     /* ── Spinner ── */
-    .spinner-wrap {
-      display: none; flex-direction: column;
-      align-items: center; gap: 14px; margin-top: 28px;
-    }
-    .spinner-wrap.visible { display: flex; }
-    .spinner {
-      width: 42px; height: 42px;
-      border: 4px solid var(--border);
-      border-top-color: var(--accent-lt);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner-text { color: var(--muted); font-size: 0.95rem; }
+    .spinner-wrap { display:none; flex-direction:column; align-items:center; gap:14px; margin-top:28px; }
+    .spinner-wrap.visible { display:flex; }
+    .spinner { width:42px; height:42px; border:4px solid var(--border);
+               border-top-color:var(--lt); border-radius:50%; animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spinner-text { color:var(--muted); font-size:.95rem; }
 
     /* ── Error ── */
-    .error-box {
-      background: rgba(220,53,69,0.12);
-      border: 1px solid rgba(220,53,69,0.4);
-      border-radius: 10px; padding: 14px 18px;
-      color: #f5a0a8; margin-top: 20px; display: none;
-      font-size: 0.95rem;
-    }
+    .error-box { background:rgba(220,53,69,.12); border:1px solid rgba(220,53,69,.4);
+                 border-radius:10px; padding:14px 18px; color:#f5a0a8;
+                 margin-top:20px; display:none; font-size:.95rem; }
 
     /* ── Result ── */
-    #result { display: none; margin-top: 28px; }
+    #result { display:none; margin-top:28px; }
+    .doc-badge { display:inline-flex; align-items:center; gap:8px;
+                 background:rgba(74,144,217,.15); border:1px solid #2a5298;
+                 border-radius:24px; padding:6px 16px; font-size:.95rem;
+                 font-weight:600; color:#a8d0f0; margin-bottom:16px; }
+    .content-box { background:var(--bg); border:1px solid var(--border);
+                   border-radius:12px; padding:20px; line-height:1.85;
+                   font-size:.97rem; white-space:pre-wrap; word-break:break-word; }
+    .content-box strong { color:#7ec8e3; font-weight:700; }
+    mark { background:rgba(243,156,18,.35); color:var(--text); border-radius:2px; padding:0 2px; }
 
-    .doc-badge {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: rgba(74,144,217,0.15); border: 1px solid #2a5298;
-      border-radius: 24px; padding: 6px 16px;
-      font-size: 0.95rem; font-weight: 600; color: #a8d0f0;
-      margin-bottom: 16px;
-    }
+    /* ── Notes ── */
+    .notes-section { margin-top:16px; }
+    .notes-section label { font-size:.88rem; color:var(--muted); display:block; margin-bottom:6px; }
+    .notes-ta { width:100%; min-height:90px; background:var(--bg); border:1px solid var(--border);
+                border-radius:10px; color:var(--text); padding:12px 14px; font-size:.95rem;
+                font-family:inherit; resize:vertical; line-height:1.6; }
+    .notes-ta:focus { outline:none; border-color:var(--lt); }
+    .notes-saved-msg { font-size:.82rem; color:var(--green); margin-top:4px; min-height:16px; }
 
-    .summary-box {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 12px; padding: 20px;
-      line-height: 1.85; font-size: 0.97rem;
-      white-space: pre-wrap; word-break: break-word;
-    }
-    .summary-box strong { color: #7ec8e3; font-weight: 700; }
+    /* ── Export row ── */
+    .export-row { display:flex; gap:10px; margin-top:16px; }
+    .export-row .btn { font-size:.88rem; }
 
-    /* ── Quiz panel ── */
-    #quiz-panel { display: none; margin-top: 20px; }
+    /* ── Timer ── */
+    .timer-section { background:rgba(74,144,217,.08); border:1px solid #2a5298;
+                     border-radius:12px; padding:16px; margin-top:16px; }
+    .timer-section h3 { font-size:.95rem; color:#a8d0f0; margin-bottom:12px; }
+    .timer-options { display:flex; flex-wrap:wrap; gap:8px; }
+    .timer-opt { padding:8px 14px; min-height:40px; background:rgba(255,255,255,.04);
+                 border:1.5px solid var(--border); border-radius:8px;
+                 color:var(--text); cursor:pointer; font-size:.9rem; font-weight:600;
+                 transition:background .15s,border-color .15s; }
+    .timer-opt:hover,.timer-opt.selected { background:rgba(74,144,217,.18); border-color:var(--lt); color:#fff; }
+    .timer-display { display:none; align-items:center; gap:10px; margin-top:12px; }
+    .timer-display.visible { display:flex; }
+    .timer-clock { font-size:1.5rem; font-weight:700; font-variant-numeric:tabular-nums;
+                   color:var(--lt); min-width:72px; }
+    .timer-clock.urgent { color:var(--red); animation:pulse .7s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .timer-label { font-size:.85rem; color:var(--muted); }
 
-    .quiz-progress {
-      font-size: 0.85rem; color: var(--muted);
-      margin-bottom: 14px; text-align: center;
-    }
-    .progress-bar-wrap {
-      background: var(--border); border-radius: 99px;
-      height: 6px; margin-bottom: 18px; overflow: hidden;
-    }
-    .progress-bar {
-      background: var(--accent-lt); height: 100%;
-      border-radius: 99px; transition: width 0.3s;
-    }
-
-    .question-card {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 12px; padding: 20px;
-    }
-    .question-text {
-      font-size: 1.05rem; font-weight: 600; line-height: 1.6;
-      margin-bottom: 20px;
-    }
-
-    .options-grid {
-      display: grid; gap: 10px;
-    }
-    .opt-btn {
-      display: flex; align-items: center; gap: 12px;
-      min-height: var(--touch); padding: 12px 16px;
-      background: rgba(255,255,255,0.04);
-      border: 1.5px solid var(--border);
-      border-radius: 10px; cursor: pointer; text-align: right;
-      font-size: 0.97rem; color: var(--text);
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .opt-btn:hover:not(:disabled) {
-      background: rgba(74,144,217,0.12);
-      border-color: var(--accent-lt);
-    }
-    .opt-btn:disabled { cursor: default; }
-    .opt-btn .opt-letter {
-      flex-shrink: 0; width: 32px; height: 32px;
-      border-radius: 50%; background: var(--border);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 0.9rem;
-    }
-    .opt-btn.correct { background: rgba(39,174,96,0.18); border-color: var(--green); }
-    .opt-btn.correct .opt-letter { background: var(--green); color: #fff; }
-    .opt-btn.wrong   { background: rgba(231,76,60,0.18);  border-color: var(--red); }
-    .opt-btn.wrong   .opt-letter { background: var(--red);   color: #fff; }
-
-    .feedback-box {
-      margin-top: 16px; padding: 16px 18px;
-      border-radius: 10px; line-height: 1.7; font-size: 0.97rem;
-      display: none;
-    }
-    .feedback-box.correct { background: rgba(39,174,96,0.15); border: 1px solid rgba(39,174,96,0.4); }
-    .feedback-box.wrong   { background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.4); }
+    /* ── Quiz ── */
+    #quiz-panel { display:none; margin-top:20px; }
+    .quiz-progress { font-size:.85rem; color:var(--muted); margin-bottom:10px; text-align:center; }
+    .progress-bar-wrap { background:var(--border); border-radius:99px; height:6px; margin-bottom:18px; overflow:hidden; }
+    .progress-bar { background:var(--lt); height:100%; border-radius:99px; transition:width .3s; }
+    .question-card { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:20px; }
+    .question-text { font-size:1.05rem; font-weight:600; line-height:1.6; margin-bottom:20px; }
+    .options-grid  { display:grid; gap:10px; }
+    .opt-btn { display:flex; align-items:center; gap:12px; min-height:var(--touch); padding:12px 16px;
+               background:rgba(255,255,255,.04); border:1.5px solid var(--border); border-radius:10px;
+               cursor:pointer; text-align:right; font-size:.97rem; color:var(--text);
+               transition:background .15s,border-color .15s; }
+    .opt-btn:hover:not(:disabled) { background:rgba(74,144,217,.12); border-color:var(--lt); }
+    .opt-btn:disabled { cursor:default; }
+    .opt-letter { flex-shrink:0; width:32px; height:32px; border-radius:50%;
+                  background:var(--border); display:flex; align-items:center;
+                  justify-content:center; font-weight:700; font-size:.9rem; }
+    .opt-btn.correct { background:rgba(39,174,96,.18); border-color:var(--green); }
+    .opt-btn.correct .opt-letter { background:var(--green); color:#fff; }
+    .opt-btn.wrong   { background:rgba(231,76,60,.18); border-color:var(--red); }
+    .opt-btn.wrong   .opt-letter { background:var(--red); color:#fff; }
+    .feedback-box { margin-top:16px; padding:16px 18px; border-radius:10px;
+                    line-height:1.7; font-size:.97rem; display:none; }
+    .feedback-box.correct { background:rgba(39,174,96,.15); border:1px solid rgba(39,174,96,.4); }
+    .feedback-box.wrong   { background:rgba(231,76,60,.15); border:1px solid rgba(231,76,60,.4); }
 
     /* ── Results screen ── */
-    #results-screen { display: none; margin-top: 20px; text-align: center; }
-    .score-circle {
-      width: 100px; height: 100px; border-radius: 50%;
-      background: rgba(74,144,217,0.15); border: 3px solid var(--accent);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      margin: 0 auto 20px;
-    }
-    .score-number { font-size: 2rem; font-weight: 700; color: var(--accent-lt); }
-    .score-label  { font-size: 0.8rem; color: var(--muted); }
-    .wrong-list {
-      text-align: right; margin-top: 16px;
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 10px; padding: 16px;
-    }
-    .wrong-list h3 { font-size: 0.95rem; color: var(--muted); margin-bottom: 10px; }
-    .wrong-list li { font-size: 0.93rem; line-height: 1.7; margin-right: 16px; }
+    #results-screen { display:none; margin-top:20px; text-align:center; }
+    .score-circle { width:100px; height:100px; border-radius:50%;
+                    background:rgba(74,144,217,.15); border:3px solid var(--accent);
+                    display:flex; flex-direction:column; align-items:center;
+                    justify-content:center; margin:0 auto 16px; }
+    .score-number { font-size:2rem; font-weight:700; color:var(--lt); }
+    .score-label  { font-size:.8rem; color:var(--muted); }
+    .time-result  { font-size:.95rem; color:var(--muted); margin-bottom:8px; }
+    .wrong-list   { text-align:right; margin-top:16px; background:var(--bg);
+                    border:1px solid var(--border); border-radius:10px; padding:16px; }
+    .wrong-list h3 { font-size:.95rem; color:var(--muted); margin-bottom:10px; }
+    .wrong-list li { font-size:.93rem; line-height:1.7; margin-right:16px; }
 
-    /* ── Flashcards / open questions ── */
-    #extra-result {
-      display: none; margin-top: 20px;
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 12px; padding: 20px;
-      line-height: 1.85; font-size: 0.97rem;
-      white-space: pre-wrap; word-break: break-word;
-    }
-    #extra-result strong { color: #7ec8e3; font-weight: 700; }
+    /* ── History panel ── */
+    #history-panel { display:none; width:100%; max-width:680px; margin-top:28px; }
+    .history-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+    .history-header h2 { font-size:1.2rem; font-weight:700; }
+    .search-wrap { position:relative; margin-bottom:16px; }
+    .search-input { width:100%; background:var(--card); border:1px solid var(--border);
+                    border-radius:10px; color:var(--text); padding:12px 16px 12px 40px;
+                    font-size:.97rem; font-family:inherit; min-height:var(--touch); }
+    .search-input::placeholder { color:var(--muted); }
+    .search-input:focus { outline:none; border-color:var(--lt); }
+    .search-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%);
+                   font-size:1rem; pointer-events:none; }
+    .history-list { display:flex; flex-direction:column; gap:12px; }
+    .history-item { background:var(--card); border:1px solid var(--border);
+                    border-radius:12px; padding:16px; }
+    .history-item-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+    .history-item-title  { font-weight:600; font-size:.97rem; flex:1; }
+    .history-item-meta   { font-size:.82rem; color:var(--muted); margin-top:4px; }
+    .history-item-actions { display:flex; gap:8px; flex-shrink:0; }
+    .history-btn { padding:6px 12px; min-height:34px; border-radius:7px; font-size:.82rem;
+                   font-weight:600; cursor:pointer; border:1.5px solid; }
+    .history-btn.view { background:rgba(74,144,217,.12); color:#a8d0f0; border-color:#2a5298; }
+    .history-btn.view:hover { background:rgba(74,144,217,.22); }
+    .history-btn.del  { background:rgba(231,76,60,.1); color:#f5a0a8; border-color:rgba(231,76,60,.4); }
+    .history-btn.del:hover { background:rgba(231,76,60,.2); }
+    .history-empty { text-align:center; color:var(--muted); padding:32px; font-size:.97rem; }
+    .history-summary-preview { margin-top:12px; background:var(--bg); border:1px solid var(--border);
+                                border-radius:8px; padding:14px; font-size:.9rem;
+                                line-height:1.75; white-space:pre-wrap; display:none; }
+    .history-summary-preview strong { color:#7ec8e3; }
 
-    /* ── Footer ── */
-    footer { margin-top: 40px; color: #3a5a78; font-size: 0.82rem; text-align: center; }
-
-    /* ── Responsive tweaks ── */
-    @media (max-width: 480px) {
-      body    { padding: 16px 10px 56px; }
-      .card   { padding: 18px 14px; border-radius: 12px; }
-      header h1 { font-size: 1.45rem; }
-      .upload-zone { padding: 32px 12px; }
-      .upload-icon { font-size: 2.2rem; }
-      .summary-box, #extra-result, .question-card { padding: 14px; }
-      .actions-row { flex-direction: column; }
-      .question-text { font-size: 1rem; }
+    /* ── Print styles ── */
+    @media print {
+      nav, .upload-zone, #file-label, .btn-primary, .actions-row,
+      .export-row, .timer-section, #quiz-panel, #results-screen,
+      .notes-section button, .btn-ghost, footer, #history-panel { display:none !important; }
+      body { background:#fff; color:#000; padding:0; }
+      .card { box-shadow:none; border:none; padding:0; }
+      .content-box, #extra-result { background:#fff; color:#000; border:none; }
+      .content-box strong, #extra-result strong { color:#1a3a6e; }
     }
+
+    /* ── Responsive ── */
+    @media (max-width:480px) {
+      .card { padding:16px 12px; border-radius:12px; margin-top:16px; }
+      .actions-row, .export-row { flex-direction:column; }
+      .timer-options { gap:6px; }
+      .timer-opt { flex:1; min-width:calc(50% - 4px); }
+      .history-item-actions { flex-direction:column; }
+    }
+
+    footer { margin-top:40px; color:#3a5a78; font-size:.82rem; text-align:center; }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">⚖️</div>
-  <h1>עוזר הלימודים המשפטי</h1>
-  <p>העלה פסק דין, חקיקה או חומר לימוד — וקבל סיכום חכם מיד</p>
-</header>
+<!-- Top nav -->
+<nav>
+  <div class="brand">⚖️ <span>עוזר הלימודים המשפטי</span></div>
+  <button class="nav-btn" id="history-toggle-btn">📊 היסטוריה</button>
+</nav>
 
-<div class="card">
+<!-- History panel -->
+<div id="history-panel">
+  <div class="card">
+    <div class="history-header">
+      <h2>📊 היסטוריית סיכומים</h2>
+      <button class="nav-btn" id="clear-history-btn" style="font-size:.82rem;">🗑️ נקה הכל</button>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="history-search" type="text" placeholder="חפש מושג בכל הסיכומים..." />
+    </div>
+    <div class="history-list" id="history-list"></div>
+  </div>
+</div>
 
-  <!-- Upload -->
+<!-- Main card -->
+<div class="card" id="main-card">
   <div class="upload-zone" id="drop-zone">
     <input type="file" id="file-input" accept=".pdf,.pptx,.docx,.txt" />
     <div class="upload-icon">📂</div>
     <div class="upload-title">גרור קובץ לכאן או לחץ לבחירה</div>
-    <div class="upload-sub">PDF, PPTX, DOCX, TXT · עד 20MB</div>
+    <div class="upload-sub">PDF, PPTX, DOCX, TXT · עד 50MB</div>
   </div>
   <div id="file-label"></div>
   <button class="btn btn-primary" id="upload-btn" disabled>סכם את המסמך</button>
 
-  <!-- Main spinner -->
   <div class="spinner-wrap" id="spinner">
     <div class="spinner"></div>
     <div class="spinner-text">מנתח את המסמך...</div>
   </div>
-
-  <!-- Error -->
   <div class="error-box" id="error-box"></div>
 
-  <!-- Summary result -->
+  <!-- Result -->
   <div id="result">
     <div class="doc-badge" id="doc-badge"></div>
-    <div class="summary-box" id="summary-box"></div>
+    <div class="content-box" id="summary-box"></div>
 
+    <!-- Notes -->
+    <div class="notes-section">
+      <label>📝 הערות אישיות</label>
+      <textarea class="notes-ta" id="notes-ta" placeholder="הוסף הערות אישיות..."></textarea>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+        <button class="btn btn-outline" style="width:auto;padding:8px 18px;min-height:38px;font-size:.9rem;" id="save-notes-btn">💾 שמור הערות</button>
+        <div class="notes-saved-msg" id="notes-saved-msg"></div>
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="export-row">
+      <button class="btn btn-outline" id="print-btn">🖨️ שמור כ-PDF</button>
+      <button class="btn btn-outline" id="docx-btn">📝 שמור כ-Word</button>
+    </div>
+
+    <!-- Quiz actions -->
     <div class="actions-row">
       <button class="btn btn-outline" id="questions-btn">📝 שאלות לבחינה</button>
       <button class="btn btn-outline" id="flashcards-btn">🃏 כרטיסיות חזרה</button>
     </div>
 
-    <!-- Extra spinner (questions / flashcards) -->
+    <!-- Timer setup (shown before quiz starts) -->
+    <div class="timer-section" id="timer-setup">
+      <h3>⏱️ טיימר בחינה (לשאלות אמריקאיות)</h3>
+      <div class="timer-options">
+        <button class="timer-opt selected" data-mins="0">ללא הגבלה</button>
+        <button class="timer-opt" data-mins="5">5 דקות</button>
+        <button class="timer-opt" data-mins="10">10 דקות</button>
+        <button class="timer-opt" data-mins="15">15 דקות</button>
+        <button class="timer-opt" data-mins="20">20 דקות</button>
+      </div>
+    </div>
+
+    <!-- Extra spinner -->
     <div class="spinner-wrap" id="extra-spinner">
       <div class="spinner"></div>
       <div class="spinner-text" id="extra-spinner-text">יוצר...</div>
     </div>
 
-    <!-- Interactive quiz -->
+    <!-- Quiz -->
     <div id="quiz-panel">
+      <!-- Running timer -->
+      <div class="timer-display" id="timer-display">
+        <div class="timer-clock" id="timer-clock">00:00</div>
+        <div class="timer-label">נותרו</div>
+      </div>
+
       <div class="quiz-progress" id="quiz-progress"></div>
       <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
-
-      <div class="question-card">
+      <div class="question-card" id="question-card">
         <div class="question-text" id="question-text"></div>
         <div class="options-grid" id="options-grid"></div>
         <div class="feedback-box" id="feedback-box"></div>
       </div>
-
-      <button class="btn btn-primary" id="next-btn" style="display:none;margin-top:14px;">
-        שאלה הבאה ←
-      </button>
+      <button class="btn btn-primary" id="next-btn" style="display:none;margin-top:14px;">שאלה הבאה ←</button>
     </div>
 
-    <!-- Results screen -->
+    <!-- Results -->
     <div id="results-screen">
       <div class="score-circle">
         <div class="score-number" id="score-number"></div>
         <div class="score-label">מתוך 5</div>
       </div>
+      <div class="time-result" id="time-result"></div>
       <div style="font-size:1.3rem;font-weight:700;" id="results-title"></div>
       <div class="wrong-list" id="wrong-list" style="display:none;">
         <h3>שאלות שטעית בהן:</h3>
@@ -343,239 +331,268 @@
       </div>
     </div>
 
-    <!-- Open questions + flashcards text output -->
-    <div id="extra-result"></div>
+    <!-- Flashcards / open questions text -->
+    <div class="content-box" id="extra-result" style="display:none;margin-top:20px;"></div>
 
     <button class="btn btn-ghost" id="reset-btn">⬆️ העלה מסמך נוסף</button>
   </div>
-
 </div>
 
 <footer>מופעל על ידי Claude AI · לצרכי לימוד בלבד</footer>
 
 <script>
-// ── DOM refs ────────────────────────────────────────────────
-const fileInput       = document.getElementById("file-input");
-const dropZone        = document.getElementById("drop-zone");
-const fileLabel       = document.getElementById("file-label");
-const uploadBtn       = document.getElementById("upload-btn");
-const spinner         = document.getElementById("spinner");
-const errorBox        = document.getElementById("error-box");
-const resultDiv       = document.getElementById("result");
-const docBadge        = document.getElementById("doc-badge");
-const summaryBox      = document.getElementById("summary-box");
-const questionsBtn    = document.getElementById("questions-btn");
-const flashcardsBtn   = document.getElementById("flashcards-btn");
-const extraSpinner    = document.getElementById("extra-spinner");
-const extraSpinnerTxt = document.getElementById("extra-spinner-text");
-const quizPanel       = document.getElementById("quiz-panel");
-const quizProgress    = document.getElementById("quiz-progress");
-const progressBar     = document.getElementById("progress-bar");
-const questionText    = document.getElementById("question-text");
-const optionsGrid     = document.getElementById("options-grid");
-const feedbackBox     = document.getElementById("feedback-box");
-const nextBtn         = document.getElementById("next-btn");
-const resultsScreen   = document.getElementById("results-screen");
-const scoreNumber     = document.getElementById("score-number");
-const resultsTitle    = document.getElementById("results-title");
-const wrongList       = document.getElementById("wrong-list");
-const wrongItems      = document.getElementById("wrong-items");
-const retryBtn        = document.getElementById("retry-btn");
-const openBtn         = document.getElementById("open-btn");
-const extraResult     = document.getElementById("extra-result");
-const resetBtn        = document.getElementById("reset-btn");
+// ── DOM ─────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fileInput       = $("file-input"),   dropZone      = $("drop-zone");
+const fileLabel       = $("file-label"),   uploadBtn     = $("upload-btn");
+const spinner         = $("spinner"),      errorBox      = $("error-box");
+const resultDiv       = $("result"),       docBadge      = $("doc-badge");
+const summaryBox      = $("summary-box"),  questionsBtn  = $("questions-btn");
+const flashcardsBtn   = $("flashcards-btn");
+const extraSpinner    = $("extra-spinner"), extraSpinnerTxt = $("extra-spinner-text");
+const quizPanel       = $("quiz-panel"),   quizProgress  = $("quiz-progress");
+const progressBar     = $("progress-bar"), questionCard  = $("question-card");
+const questionText    = $("question-text"),optionsGrid   = $("options-grid");
+const feedbackBox     = $("feedback-box"), nextBtn       = $("next-btn");
+const resultsScreen   = $("results-screen"),scoreNumber  = $("score-number");
+const resultsTitle    = $("results-title"),wrongList     = $("wrong-list");
+const wrongItems      = $("wrong-items"),  retryBtn      = $("retry-btn");
+const openBtn         = $("open-btn"),     extraResult   = $("extra-result");
+const resetBtn        = $("reset-btn"),    notesTA       = $("notes-ta");
+const saveNotesBtn    = $("save-notes-btn"),notesSavedMsg= $("notes-saved-msg");
+const printBtn        = $("print-btn"),    docxBtn       = $("docx-btn");
+const timerSetup      = $("timer-setup"),  timerDisplay  = $("timer-display");
+const timerClock      = $("timer-clock"),  timeResult    = $("time-result");
+const historyToggle   = $("history-toggle-btn");
+const historyPanel    = $("history-panel"),historyList   = $("history-list");
+const historySearch   = $("history-search"),clearHistory = $("clear-history-btn");
 
-// ── State ───────────────────────────────────────────────────
-let selectedFile  = null;
-let docToken      = null;
-let mcQuestions   = [];   // parsed MC questions
-let openQText     = "";   // raw text of open questions section
-let currentQ      = 0;
-let score         = 0;
-let wrongQuestions = [];
+// ── State ────────────────────────────────────────────────────
+let selectedFile  = null, docToken = null;
+let currentFilename = "", currentLabel = "", currentSummary = "";
+let mcQuestions   = [], openQText = "";
+let currentQ = 0, score = 0, wrongQuestions = [];
+let timerMins = 0, timerInterval = null, quizStartTime = null;
 
-// ── File handling ────────────────────────────────────────────
+// ── Upload ───────────────────────────────────────────────────
 function setFile(file) {
   if (!file) return;
   const ext = file.name.split(".").pop().toLowerCase();
   if (!["pdf","pptx","docx","txt"].includes(ext)) {
-    showError("סוג קובץ לא נתמך. אנא בחר PDF, PPTX, DOCX או TXT.");
-    return;
+    showError("סוג קובץ לא נתמך. אנא בחר PDF, PPTX, DOCX או TXT."); return;
   }
   selectedFile = file;
   fileLabel.textContent = "📄 " + file.name;
   uploadBtn.disabled = false;
   hideError();
 }
-
 fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
 dropZone.addEventListener("dragover",  e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
 dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
 dropZone.addEventListener("drop", e => { e.preventDefault(); dropZone.classList.remove("drag-over"); setFile(e.dataTransfer.files[0]); });
 
-// ── Upload ───────────────────────────────────────────────────
 uploadBtn.addEventListener("click", async () => {
   if (!selectedFile) return;
   uploadBtn.disabled = true;
   spinner.classList.add("visible");
   resultDiv.style.display = "none";
   hideError();
-
   const form = new FormData();
   form.append("file", selectedFile);
-
   try {
-    const res  = await fetch("/upload", { method:"POST", body: form });
+    const res = await fetch("/upload", { method:"POST", body: form });
     const data = await res.json();
-    if (!res.ok || data.error) { showError(data.error || "שגיאה בלתי צפויה"); return; }
-
-    docToken = data.token;
+    if (!res.ok || data.error) { showError(data.error || "שגיאה"); return; }
+    docToken        = data.token;
+    currentFilename = selectedFile.name;
+    currentLabel    = data.label;
+    currentSummary  = data.summary;
     docBadge.innerHTML   = data.icon + " " + data.label;
     summaryBox.innerHTML = md(data.summary);
-
-    // Reset quiz area
+    loadNotes(currentFilename);
+    saveToHistory({ filename: currentFilename, label: data.label, icon: data.icon,
+                    doc_type: data.doc_type, summary: data.summary });
     hideQuizPanels();
     resultDiv.style.display = "block";
   } catch { showError("שגיאת רשת — נסה שוב"); }
   finally  { spinner.classList.remove("visible"); uploadBtn.disabled = false; }
 });
 
-// ── Fetch questions ──────────────────────────────────────────
+// ── Notes ────────────────────────────────────────────────────
+function loadNotes(key) {
+  notesTA.value = localStorage.getItem("notes_" + key) || "";
+  notesSavedMsg.textContent = "";
+}
+saveNotesBtn.addEventListener("click", () => {
+  localStorage.setItem("notes_" + currentFilename, notesTA.value);
+  notesSavedMsg.textContent = "✅ נשמר";
+  setTimeout(() => notesSavedMsg.textContent = "", 2500);
+});
+
+// ── Export: PDF ──────────────────────────────────────────────
+printBtn.addEventListener("click", () => window.print());
+
+// ── Export: DOCX ─────────────────────────────────────────────
+docxBtn.addEventListener("click", async () => {
+  docxBtn.disabled = true;
+  try {
+    const res = await fetch("/export-docx", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ summary: currentSummary, filename: currentFilename,
+                             notes: notesTA.value }),
+    });
+    if (!res.ok) { showError("שגיאה ביצוא Word"); return; }
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = currentFilename.replace(/\.[^.]+$/, "") + ".docx";
+    a.click();
+  } catch { showError("שגיאת רשת — נסה שוב"); }
+  finally  { docxBtn.disabled = false; }
+});
+
+// ── Timer setup ──────────────────────────────────────────────
+document.querySelectorAll(".timer-opt").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".timer-opt").forEach(b => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    timerMins = parseInt(btn.dataset.mins);
+  });
+});
+
+function startTimer(totalSecs) {
+  let remaining = totalSecs;
+  timerDisplay.classList.add("visible");
+  renderClock(remaining);
+  quizStartTime = Date.now();
+  timerInterval = setInterval(() => {
+    remaining--;
+    renderClock(remaining);
+    if (remaining <= 30) timerClock.classList.add("urgent");
+    if (remaining <= 0) { clearInterval(timerInterval); timerInterval = null; forceFinishQuiz(); }
+  }, 1000);
+}
+
+function renderClock(secs) {
+  const m = String(Math.floor(secs / 60)).padStart(2, "0");
+  const s = String(secs % 60).padStart(2, "0");
+  timerClock.textContent = m + ":" + s;
+}
+
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  timerDisplay.classList.remove("visible");
+  timerClock.classList.remove("urgent");
+}
+
+// ── Questions fetch ──────────────────────────────────────────
 questionsBtn.addEventListener("click", async () => {
   if (!docToken) return;
   setExtraLoading(true, "יוצר שאלות לבחינה...");
   hideQuizPanels();
-
   try {
-    const res  = await fetch("/questions", {
+    const res = await fetch("/questions", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ token: docToken }),
     });
     const data = await res.json();
     if (!res.ok || data.error) { showError(data.error || "שגיאה"); return; }
-
     const parsed = parseQuestions(data.result);
-    mcQuestions   = parsed.mc;
-    openQText     = parsed.open;
-
+    mcQuestions = parsed.mc; openQText = parsed.open;
     if (mcQuestions.length === 0) {
-      extraResult.innerHTML     = md(data.result);
-      extraResult.style.display = "block";
-      return;
+      extraResult.innerHTML = md(data.result); extraResult.style.display = "block"; return;
     }
     startQuiz();
   } catch { showError("שגיאת רשת — נסה שוב"); }
   finally  { setExtraLoading(false); }
 });
 
-// ── Fetch flashcards ─────────────────────────────────────────
 flashcardsBtn.addEventListener("click", async () => {
   if (!docToken) return;
   setExtraLoading(true, "יוצר כרטיסיות חזרה...");
   hideQuizPanels();
-
   try {
-    const res  = await fetch("/flashcards", {
+    const res = await fetch("/flashcards", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ token: docToken }),
     });
     const data = await res.json();
     if (!res.ok || data.error) { showError(data.error || "שגיאה"); return; }
-
-    extraResult.innerHTML     = md(data.result);
-    extraResult.style.display = "block";
+    extraResult.innerHTML = md(data.result); extraResult.style.display = "block";
   } catch { showError("שגיאת רשת — נסה שוב"); }
   finally  { setExtraLoading(false); }
 });
 
-// ── Parse questions from Claude's response ───────────────────
+// ── Parse questions ──────────────────────────────────────────
 function parseQuestions(text) {
-  const splitMarker = text.search(/שאלות פתוחות/);
-  const mcSection   = splitMarker >= 0 ? text.slice(0, splitMarker) : text;
-  const openSection = splitMarker >= 0 ? text.slice(splitMarker)    : "";
-
+  const splitIdx = text.search(/שאלות פתוחות/);
+  const mcSect   = splitIdx >= 0 ? text.slice(0, splitIdx) : text;
+  const openSect = splitIdx >= 0 ? text.slice(splitIdx)    : "";
   const mc = [];
-  // Each block starts at a line like "1." through "5."
-  const blocks = mcSection.split(/\n(?=\d+\.)/);
-
-  for (const block of blocks) {
-    const qMatch = block.match(/^\d+\.\s*([\s\S]+?)(?=\nא\.)/);
-    if (!qMatch) continue;
-
-    const qText  = qMatch[1].trim();
-    const optA   = (block.match(/^א\.\s*(.+)/m) || [])[1]?.trim();
-    const optB   = (block.match(/^ב\.\s*(.+)/m) || [])[1]?.trim();
-    const optC   = (block.match(/^ג\.\s*(.+)/m) || [])[1]?.trim();
-    const optD   = (block.match(/^ד\.\s*(.+)/m) || [])[1]?.trim();
-    const cMatch = block.match(/תשובה נכונה[:\s]+([אבגד])/);
-    if (!qText || !optA || !cMatch) continue;
-
-    mc.push({
-      text: qText,
-      options: [ ["א", optA], ["ב", optB || ""], ["ג", optC || ""], ["ד", optD || ""] ],
-      correct: cMatch[1],
-    });
+  for (const block of mcSect.split(/\n(?=\d+\.)/)) {
+    const qm  = block.match(/^\d+\.\s*([\s\S]+?)(?=\nא\.)/);
+    if (!qm) continue;
+    const optA = (block.match(/^א\.\s*(.+)/m) || [])[1]?.trim();
+    const optB = (block.match(/^ב\.\s*(.+)/m) || [])[1]?.trim();
+    const optC = (block.match(/^ג\.\s*(.+)/m) || [])[1]?.trim();
+    const optD = (block.match(/^ד\.\s*(.+)/m) || [])[1]?.trim();
+    const cm   = block.match(/תשובה נכונה[:\s]+([אבגד])/);
+    if (!qm[1] || !optA || !cm) continue;
+    mc.push({ text: qm[1].trim(),
+              options: [["א",optA],["ב",optB||""],["ג",optC||""],["ד",optD||""]],
+              correct: cm[1] });
   }
-
-  return { mc: mc.slice(0, 5), open: openSection };
+  return { mc: mc.slice(0, 5), open: openSect };
 }
 
-// ── Quiz logic ───────────────────────────────────────────────
+// ── Quiz ─────────────────────────────────────────────────────
 function startQuiz() {
-  currentQ       = 0;
-  score          = 0;
-  wrongQuestions = [];
-  quizPanel.style.display      = "block";
-  resultsScreen.style.display  = "none";
-  extraResult.style.display    = "none";
+  currentQ = 0; score = 0; wrongQuestions = [];
+  quizPanel.style.display     = "block";
+  resultsScreen.style.display = "none";
+  extraResult.style.display   = "none";
+  questionCard.style.display  = "block";
+  nextBtn.style.display       = "none";
+  stopTimer();
+  if (timerMins > 0) startTimer(timerMins * 60);
   showQuestion();
 }
 
 function showQuestion() {
-  const total = mcQuestions.length;
-  const q     = mcQuestions[currentQ];
-
-  quizProgress.textContent        = "שאלה " + (currentQ + 1) + " מתוך " + total;
-  progressBar.style.width         = ((currentQ / total) * 100) + "%";
-  questionText.textContent        = q.text;
-  feedbackBox.style.display       = "none";
-  feedbackBox.className           = "feedback-box";
-  nextBtn.style.display           = "none";
-  optionsGrid.innerHTML           = "";
-
+  const q = mcQuestions[currentQ], total = mcQuestions.length;
+  quizProgress.textContent = "שאלה " + (currentQ+1) + " מתוך " + total;
+  progressBar.style.width  = (currentQ / total * 100) + "%";
+  questionText.textContent = q.text;
+  feedbackBox.style.display = "none"; feedbackBox.className = "feedback-box";
+  nextBtn.style.display     = "none";
+  optionsGrid.innerHTML     = "";
   q.options.forEach(([letter, text]) => {
     if (!text) return;
     const btn = document.createElement("button");
     btn.className = "opt-btn";
-    btn.innerHTML =
-      '<span class="opt-letter">' + letter + '</span>' +
-      '<span class="opt-text">'   + escHtml(text) + '</span>';
+    btn.innerHTML = '<span class="opt-letter">'+letter+'</span><span>'+escHtml(text)+'</span>';
     btn.addEventListener("click", () => handleAnswer(letter, q));
     optionsGrid.appendChild(btn);
   });
 }
 
 function handleAnswer(chosen, q) {
-  // Disable all options
   optionsGrid.querySelectorAll(".opt-btn").forEach(b => {
     b.disabled = true;
-    const letter = b.querySelector(".opt-letter").textContent;
-    if (letter === q.correct) b.classList.add("correct");
-    if (letter === chosen && chosen !== q.correct) b.classList.add("wrong");
+    const l = b.querySelector(".opt-letter").textContent;
+    if (l === q.correct) b.classList.add("correct");
+    if (l === chosen && chosen !== q.correct) b.classList.add("wrong");
   });
-
-  const isCorrect = chosen === q.correct;
-  if (isCorrect) {
+  if (chosen === q.correct) {
     score++;
-    feedbackBox.className   = "feedback-box correct";
-    feedbackBox.innerHTML   = "✅ <strong>נכון! כל הכבוד!</strong>";
+    feedbackBox.className = "feedback-box correct";
+    feedbackBox.innerHTML = "✅ <strong>נכון! כל הכבוד!</strong>";
   } else {
     wrongQuestions.push(q.text);
-    const correctText = q.options.find(([l]) => l === q.correct)?.[1] || "";
+    const ct = q.options.find(([l]) => l === q.correct)?.[1] || "";
     feedbackBox.className = "feedback-box wrong";
-    feedbackBox.innerHTML =
-      "❌ <strong>לא נכון.</strong><br>" +
-      "✅ התשובה הנכונה: <strong>" + q.correct + ". " + escHtml(correctText) + "</strong>";
+    feedbackBox.innerHTML = "❌ <strong>לא נכון.</strong><br>✅ התשובה הנכונה: <strong>"
+      + q.correct + ". " + escHtml(ct) + "</strong>";
   }
   feedbackBox.style.display = "block";
   nextBtn.style.display     = "block";
@@ -583,56 +600,125 @@ function handleAnswer(chosen, q) {
 
 nextBtn.addEventListener("click", () => {
   currentQ++;
-  if (currentQ < mcQuestions.length) {
-    showQuestion();
-  } else {
-    showResults();
-  }
+  if (currentQ < mcQuestions.length) showQuestion();
+  else finishQuiz();
 });
 
-function showResults() {
-  progressBar.style.width           = "100%";
-  quizPanel.querySelector(".question-card").style.display = "none";
-  nextBtn.style.display             = "none";
-  resultsScreen.style.display       = "block";
-  scoreNumber.textContent           = score;
-
-  const pct = score / mcQuestions.length;
-  if (pct === 1)      resultsTitle.textContent = "🎓 מושלם! ציון מלא!";
-  else if (pct >= .6) resultsTitle.textContent = "👍 כל הכבוד! ציון טוב";
-  else                resultsTitle.textContent = "📚 כדאי לחזור על החומר";
-
-  if (wrongQuestions.length > 0) {
-    wrongItems.innerHTML = wrongQuestions
-      .map(q => "<li>" + escHtml(q) + "</li>").join("");
-    wrongList.style.display = "block";
-  } else {
-    wrongList.style.display = "none";
+function forceFinishQuiz() {
+  // Mark unanswered as wrong
+  while (currentQ < mcQuestions.length) {
+    wrongQuestions.push(mcQuestions[currentQ].text);
+    currentQ++;
   }
+  finishQuiz();
+}
 
-  openBtn.style.display = openQText.trim() ? "flex" : "none";
+function finishQuiz() {
+  stopTimer();
+  progressBar.style.width    = "100%";
+  questionCard.style.display = "none";
+  nextBtn.style.display      = "none";
+  resultsScreen.style.display = "block";
+  scoreNumber.textContent    = score;
+  const pct = score / mcQuestions.length;
+  resultsTitle.textContent   = pct === 1 ? "🎓 מושלם! ציון מלא!" :
+                                pct >= .6 ? "👍 כל הכבוד! ציון טוב" : "📚 כדאי לחזור על החומר";
+  if (quizStartTime) {
+    const elapsed = Math.round((Date.now() - quizStartTime) / 1000);
+    const m = Math.floor(elapsed/60), s = elapsed % 60;
+    timeResult.textContent = "⏱️ סיימת ב-" + m + " דקות ו-" + s + " שניות";
+  } else { timeResult.textContent = ""; }
+  wrongItems.innerHTML = wrongQuestions.map(q => "<li>"+escHtml(q)+"</li>").join("");
+  wrongList.style.display = wrongQuestions.length ? "block" : "none";
+  openBtn.style.display   = openQText.trim() ? "flex" : "none";
 }
 
 retryBtn.addEventListener("click", () => {
-  quizPanel.querySelector(".question-card").style.display = "block";
+  questionCard.style.display  = "block";
   resultsScreen.style.display = "none";
   startQuiz();
 });
-
 openBtn.addEventListener("click", () => {
-  extraResult.innerHTML     = md(openQText);
-  extraResult.style.display = "block";
+  extraResult.innerHTML = md(openQText); extraResult.style.display = "block";
   extraResult.scrollIntoView({ behavior:"smooth", block:"start" });
+});
+
+// ── History ──────────────────────────────────────────────────
+function saveToHistory(entry) {
+  const hist = getHistory();
+  const idx  = hist.findIndex(e => e.filename === entry.filename);
+  const record = { ...entry, date: new Date().toLocaleString("he-IL") };
+  if (idx >= 0) hist[idx] = record; else hist.unshift(record);
+  localStorage.setItem("legal_history", JSON.stringify(hist.slice(0, 50)));
+}
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem("legal_history") || "[]"); }
+  catch { return []; }
+}
+function renderHistory(filter = "") {
+  const hist = getHistory();
+  const term = filter.trim().toLowerCase();
+  historyList.innerHTML = "";
+  const matches = hist.filter(e =>
+    !term || e.filename.toLowerCase().includes(term) ||
+    e.summary.toLowerCase().includes(term) || e.label.toLowerCase().includes(term)
+  );
+  if (!matches.length) {
+    historyList.innerHTML = '<div class="history-empty">' +
+      (term ? "לא נמצאו תוצאות לחיפוש" : "אין סיכומים שמורים עדיין") + "</div>";
+    return;
+  }
+  matches.forEach((entry, i) => {
+    const item = document.createElement("div");
+    item.className = "history-item";
+    const summaryHtml = term
+      ? highlight(escHtml(entry.summary), term)
+      : escHtml(entry.summary);
+    item.innerHTML = `
+      <div class="history-item-header">
+        <div>
+          <div class="history-item-title">${entry.icon} ${escHtml(entry.filename)}</div>
+          <div class="history-item-meta">${escHtml(entry.label)} · 📅 ${escHtml(entry.date)}</div>
+        </div>
+        <div class="history-item-actions">
+          <button class="history-btn view" data-i="${i}">👁️ צפה</button>
+          <button class="history-btn del"  data-fn="${escHtml(entry.filename)}">🗑️</button>
+        </div>
+      </div>
+      <div class="history-summary-preview" id="hprev-${i}">${summaryHtml}</div>`;
+    item.querySelector(".view").addEventListener("click", () => {
+      const prev = item.querySelector(".history-summary-preview");
+      prev.style.display = prev.style.display === "block" ? "none" : "block";
+    });
+    item.querySelector(".del").addEventListener("click", () => {
+      const hist2 = getHistory().filter(e => e.filename !== entry.filename);
+      localStorage.setItem("legal_history", JSON.stringify(hist2));
+      renderHistory(historySearch.value);
+    });
+    historyList.appendChild(item);
+  });
+}
+
+historyToggle.addEventListener("click", () => {
+  const visible = historyPanel.style.display === "block";
+  historyPanel.style.display = visible ? "none" : "block";
+  if (!visible) { renderHistory(); historyPanel.scrollIntoView({ behavior:"smooth" }); }
+});
+historySearch.addEventListener("input", () => renderHistory(historySearch.value));
+clearHistory.addEventListener("click", () => {
+  if (!confirm("למחוק את כל ההיסטוריה?")) return;
+  localStorage.removeItem("legal_history");
+  renderHistory();
 });
 
 // ── Reset ────────────────────────────────────────────────────
 resetBtn.addEventListener("click", () => {
   selectedFile = null; docToken = null;
+  currentFilename = ""; currentLabel = ""; currentSummary = "";
   fileInput.value = ""; fileLabel.textContent = "";
   uploadBtn.disabled = true;
   resultDiv.style.display = "none";
-  hideQuizPanels();
-  hideError();
+  hideQuizPanels(); stopTimer(); hideError();
 });
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -642,30 +728,26 @@ function hideQuizPanels() {
   extraResult.style.display   = "none";
   extraResult.innerHTML       = "";
 }
-
 function setExtraLoading(on, text) {
-  questionsBtn.disabled  = on;
-  flashcardsBtn.disabled = on;
+  questionsBtn.disabled = flashcardsBtn.disabled = on;
   extraSpinnerTxt.textContent = text || "";
   extraSpinner.classList.toggle("visible", on);
 }
-
-function showError(msg) {
-  errorBox.textContent   = "❌ " + msg;
-  errorBox.style.display = "block";
-}
-function hideError() { errorBox.style.display = "none"; }
-
+function showError(msg) { errorBox.textContent = "❌ " + msg; errorBox.style.display = "block"; }
+function hideError()     { errorBox.style.display = "none"; }
 function escHtml(t) {
-  return String(t)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;")
+                      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
-
 function md(text) {
   return escHtml(text)
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\n/g, "<br>");
+    .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")
+    .replace(/\n/g,"<br>");
+}
+function highlight(html, term) {
+  if (!term) return html;
+  const re = new RegExp("(" + term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + ")", "gi");
+  return html.replace(re, "<mark>$1</mark>");
 }
 </script>
 </body>

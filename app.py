@@ -2,23 +2,29 @@ import os
 import io
 import uuid
 import logging
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template, jsonify, send_file
 import PyPDF2
 from pptx import Presentation
 from docx import Document
+from docx.oxml import OxmlElement
 import anthropic
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 log = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20 MB
+app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 # In-memory text cache: token → extracted text (up to 50 entries)
 _TEXT_CACHE: dict[str, str] = {}
 _MAX_CACHE  = 50
+
+
+@app.errorhandler(413)
+def too_large(e):
+    return jsonify({"error": "הקובץ גדול מדי — מקסימום 50MB"}), 413
 
 
 # ─────────────────────────────────────────────────────────────
@@ -127,6 +133,19 @@ TYPE_LABELS = {
 
 
 # ─────────────────────────────────────────────────────────────
+#  Claude helper
+# ─────────────────────────────────────────────────────────────
+
+def _claude(prompt: str) -> str:
+    response = client.messages.create(
+        model="claude-opus-4-5",
+        max_tokens=2048,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.content[0].text
+
+
+# ─────────────────────────────────────────────────────────────
 #  Routes
 # ─────────────────────────────────────────────────────────────
 
@@ -166,17 +185,11 @@ def upload():
     prompt   = PROMPTS[doc_type] + text[:12000]
 
     try:
-        response = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=2048,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        summary = response.content[0].text
+        summary = _claude(prompt)
     except Exception as exc:
         log.error("Claude error: %s", exc)
         return jsonify({"error": f"שגיאה בסיכום: {exc}"}), 500
 
-    # Cache text for questions / flashcards endpoints
     token = str(uuid.uuid4())
     if len(_TEXT_CACHE) >= _MAX_CACHE:
         oldest = next(iter(_TEXT_CACHE))
@@ -184,16 +197,11 @@ def upload():
     _TEXT_CACHE[token] = text[:12000]
 
     icon, label = TYPE_LABELS[doc_type]
-    return jsonify({"icon": icon, "label": label, "summary": summary, "token": token})
-
-
-def _claude(prompt: str) -> str:
-    response = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=2048,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return response.content[0].text
+    return jsonify({
+        "icon": icon, "label": label,
+        "doc_type": doc_type,
+        "summary": summary, "token": token,
+    })
 
 
 @app.route("/questions", methods=["POST"])
@@ -222,7 +230,6 @@ def questions():
         "(חזור על הפורמט לשאלות 2-5)\n\n"
         "---\n\n" + text
     )
-
     try:
         return jsonify({"result": _claude(prompt)})
     except Exception as exc:
@@ -251,12 +258,58 @@ def flashcards():
         "(המשך עד כרטיסייה 10)\n\n"
         "---\n\n" + text
     )
-
     try:
         return jsonify({"result": _claude(prompt)})
     except Exception as exc:
         log.error("Flashcards error: %s", exc)
         return jsonify({"error": f"שגיאה ביצירת כרטיסיות: {exc}"}), 500
+
+
+@app.route("/export-docx", methods=["POST"])
+def export_docx():
+    data     = request.json or {}
+    summary  = data.get("summary", "")
+    filename = data.get("filename", "סיכום")
+    notes    = data.get("notes", "")
+
+    doc = Document()
+
+    # RTL helper
+    def _rtl(paragraph):
+        pPr = paragraph._p.get_or_add_pPr()
+        bidi = OxmlElement("w:bidi")
+        pPr.append(bidi)
+
+    title_para = doc.add_heading(filename, level=0)
+    _rtl(title_para)
+
+    for line in summary.split("\n"):
+        clean = line.strip("*").strip()
+        if not clean:
+            continue
+        p = doc.add_paragraph(clean)
+        _rtl(p)
+
+    if notes.strip():
+        doc.add_paragraph("")
+        h = doc.add_heading("הערות אישיות", level=2)
+        _rtl(h)
+        for line in notes.split("\n"):
+            if line.strip():
+                p = doc.add_paragraph(line.strip())
+                _rtl(p)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+
+    safe_name = "".join(c for c in filename if c.isalnum() or c in " .-_()") or "summary"
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=f"{safe_name}.docx",
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
 
 
 if __name__ == "__main__":
