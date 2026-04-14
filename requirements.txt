@@ -3,4 +3,5 @@ PyPDF2
 python-pptx
 python-docx
 anthropic
+openai
 httpx==0.27.0

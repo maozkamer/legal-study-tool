@@ -2,12 +2,14 @@ import os
 import io
 import uuid
 import logging
+from datetime import date
 from flask import Flask, request, render_template, jsonify, send_file
 import PyPDF2
 from pptx import Presentation
 from docx import Document
 from docx.oxml import OxmlElement
 import anthropic
+from openai import OpenAI
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 log = logging.getLogger(__name__)
@@ -16,6 +18,7 @@ app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # In-memory text cache: token → extracted text (up to 50 entries)
 _TEXT_CACHE: dict[str, str] = {}
@@ -310,6 +313,69 @@ def export_docx():
         download_name=f"{safe_name}.docx",
         mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
+
+
+@app.route("/transcribe", methods=["POST"])
+def transcribe():
+    audio_file = request.files.get("audio")
+    duration   = request.form.get("duration", "")
+    mime_type  = request.form.get("content_type", "audio/webm")
+
+    if not audio_file:
+        return jsonify({"error": "לא התקבל קובץ אודיו"}), 400
+
+    data = audio_file.read()
+    if not data:
+        return jsonify({"error": "קובץ האודיו ריק"}), 400
+
+    # Derive extension from MIME type for Whisper filename hint
+    if "ogg" in mime_type:
+        ext = "ogg"
+    elif "mp4" in mime_type:
+        ext = "mp4"
+    else:
+        ext = "webm"
+
+    try:
+        transcript_resp = openai_client.audio.transcriptions.create(
+            model="whisper-1",
+            file=(f"recording.{ext}", data, mime_type),
+            language="he",
+        )
+        transcript_text = transcript_resp.text
+    except Exception as exc:
+        log.error("Whisper error: %s", exc)
+        return jsonify({"error": f"שגיאה בתמלול: {exc}"}), 500
+
+    if not transcript_text.strip():
+        return jsonify({"error": "לא ניתן לתמלל את ההקלטה — נסה שוב"}), 400
+
+    today = date.today().strftime("%d/%m/%Y")
+    duration_line = f"⏱️ משך: {duration}" if duration else ""
+
+    prompt = (
+        "אתה עוזר לימודים. סכם את ההרצאה שהוקלטה בעברית בפורמט הזה בדיוק:\n\n"
+        f"🎙️ סיכום הרצאה\n"
+        f"📅 תאריך: {today}\n"
+        f"{duration_line}\n\n"
+        "📖 נושאים מרכזיים:\n"
+        "1. [נושא]\n"
+        "2. [נושא]\n"
+        "3. [המשך לפי הצורך]\n\n"
+        "💡 רעיונות חשובים:\n"
+        "- [רעיון]\n\n"
+        "📌 לזכור לבחינה:\n"
+        "- [נקודה]\n\n"
+        "תמליל ההרצאה:\n" + transcript_text[:8000]
+    )
+
+    try:
+        summary = _claude(prompt)
+    except Exception as exc:
+        log.error("Claude error in transcribe: %s", exc)
+        return jsonify({"error": f"שגיאה בסיכום: {exc}"}), 500
+
+    return jsonify({"summary": summary, "transcript": transcript_text, "duration": duration})
 
 
 if __name__ == "__main__":

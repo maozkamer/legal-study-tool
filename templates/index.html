@@ -208,6 +208,35 @@
     }
 
     footer { margin-top:40px; color:#3a5a78; font-size:.82rem; text-align:center; }
+
+    /* ── Recording card ── */
+    .section-divider { display:flex; align-items:center; gap:12px; margin:24px 0 0;
+                       width:100%; max-width:680px; color:#3a5a78; font-size:.82rem; }
+    .section-divider::before,.section-divider::after { content:""; flex:1;
+      border-top:1px solid var(--border); }
+    .rec-big-btn { display:flex; align-items:center; justify-content:center; gap:10px;
+                   width:100%; max-width:320px; margin:4px auto 0;
+                   min-height:58px; padding:14px 20px; font-size:1.15rem; font-weight:700;
+                   background:linear-gradient(135deg,#7b1fa2,#ab47bc);
+                   color:#fff; border:none; border-radius:14px; cursor:pointer;
+                   box-shadow:0 4px 18px rgba(171,71,188,.35);
+                   transition:opacity .2s,transform .1s; }
+    .rec-big-btn:hover { opacity:.88; }
+    .rec-big-btn:active { transform:scale(.97); }
+    .rec-pulse { width:14px; height:14px; border-radius:50%; background:#ff4b4b;
+                 animation:recpulse 1s ease-in-out infinite; flex-shrink:0; }
+    @keyframes recpulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.75)} }
+    .rec-timer-display { font-size:2.2rem; font-weight:700; font-variant-numeric:tabular-nums;
+                         color:#ff7043; text-align:center; margin:16px 0 4px; }
+    .rec-stop-btn { display:flex; align-items:center; justify-content:center; gap:8px;
+                    width:100%; max-width:220px; margin:12px auto 0;
+                    min-height:48px; padding:12px 18px; font-size:1rem; font-weight:700;
+                    background:rgba(231,76,60,.2); color:#f5a0a8;
+                    border:1.5px solid var(--red); border-radius:10px; cursor:pointer;
+                    transition:background .15s; }
+    .rec-stop-btn:hover { background:rgba(231,76,60,.32); }
+    .rec-result-header { text-align:center; margin-bottom:14px; }
+    .rec-result-header .doc-badge { display:inline-flex; }
   </style>
 </head>
 <body>
@@ -335,6 +364,50 @@
     <div class="content-box" id="extra-result" style="display:none;margin-top:20px;"></div>
 
     <button class="btn btn-ghost" id="reset-btn">⬆️ העלה מסמך נוסף</button>
+  </div>
+</div>
+
+<div class="section-divider">— או —</div>
+
+<!-- Recording card -->
+<div class="card" id="recording-card" style="margin-top:16px;">
+  <div style="text-align:center;margin-bottom:4px;">
+    <span style="font-size:1rem;color:var(--muted);">הקלט הרצאה וקבל סיכום מיידי</span>
+  </div>
+
+  <!-- Initial: big record button -->
+  <div id="rec-initial">
+    <button class="rec-big-btn" id="rec-start-btn">🎙️ הקלט הרצאה</button>
+  </div>
+
+  <!-- While recording: pulse dot + timer + stop -->
+  <div id="rec-recording" style="display:none;text-align:center;padding:8px 0;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;color:#ff7043;font-weight:600;font-size:.95rem;">
+      <div class="rec-pulse"></div><span>מקליט...</span>
+    </div>
+    <div class="rec-timer-display" id="rec-timer">00:00</div>
+    <button class="rec-stop-btn" id="rec-stop-btn">⏹️ עצור הקלטה</button>
+  </div>
+
+  <!-- Processing spinner -->
+  <div class="spinner-wrap" id="rec-spinner">
+    <div class="spinner"></div>
+    <div class="spinner-text">מתמלל ומסכם את ההרצאה...</div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="rec-error-box"></div>
+
+  <!-- Result -->
+  <div id="rec-result" style="display:none;">
+    <div class="rec-result-header">
+      <div class="doc-badge">🎙️ סיכום הרצאה</div>
+    </div>
+    <div class="content-box" id="rec-summary-box"></div>
+    <div class="export-row" style="margin-top:14px;">
+      <button class="btn btn-outline" id="rec-pdf-btn">📄 הורד PDF</button>
+    </div>
+    <button class="btn btn-ghost" id="rec-reset-btn" style="margin-top:12px;">🎙️ הקלט הרצאה חדשה</button>
   </div>
 </div>
 
