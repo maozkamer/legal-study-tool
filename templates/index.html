@@ -209,34 +209,81 @@
 
     footer { margin-top:40px; color:#3a5a78; font-size:.82rem; text-align:center; }
 
-    /* ── Recording card ── */
-    .section-divider { display:flex; align-items:center; gap:12px; margin:24px 0 0;
-                       width:100%; max-width:680px; color:#3a5a78; font-size:.82rem; }
+    /* ── Recording feature ── */
+    .section-divider { display:flex; align-items:center; gap:12px;
+                       margin:24px 0 0; width:100%; max-width:680px;
+                       color:#3a5a78; font-size:.82rem; }
     .section-divider::before,.section-divider::after { content:""; flex:1;
       border-top:1px solid var(--border); }
+
+    #rec-card h2 { font-size:1.1rem; font-weight:700; margin-bottom:14px;
+                   display:flex; align-items:center; gap:8px; }
+
+    /* Name input */
+    .rec-name-input { width:100%; background:var(--bg); border:1.5px solid var(--border);
+                      border-radius:10px; color:var(--text); padding:14px 16px;
+                      font-size:1rem; font-family:inherit; min-height:var(--touch);
+                      margin-bottom:14px; transition:border-color .2s; }
+    .rec-name-input:focus { outline:none; border-color:var(--lt); }
+    .rec-name-input::placeholder { color:var(--muted); }
+    .rec-name-input.input-error { border-color:var(--red); }
+
+    /* Big start button */
     .rec-big-btn { display:flex; align-items:center; justify-content:center; gap:10px;
-                   width:100%; max-width:320px; margin:4px auto 0;
-                   min-height:58px; padding:14px 20px; font-size:1.15rem; font-weight:700;
-                   background:linear-gradient(135deg,#7b1fa2,#ab47bc);
+                   width:100%; min-height:58px; padding:14px; font-size:1.15rem; font-weight:700;
+                   background:linear-gradient(135deg,#6a1b9a,#ab47bc);
                    color:#fff; border:none; border-radius:14px; cursor:pointer;
                    box-shadow:0 4px 18px rgba(171,71,188,.35);
                    transition:opacity .2s,transform .1s; }
     .rec-big-btn:hover { opacity:.88; }
     .rec-big-btn:active { transform:scale(.97); }
+
+    /* Pulse dot */
     .rec-pulse { width:14px; height:14px; border-radius:50%; background:#ff4b4b;
-                 animation:recpulse 1s ease-in-out infinite; flex-shrink:0; }
-    @keyframes recpulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.75)} }
-    .rec-timer-display { font-size:2.2rem; font-weight:700; font-variant-numeric:tabular-nums;
-                         color:#ff7043; text-align:center; margin:16px 0 4px; }
-    .rec-stop-btn { display:flex; align-items:center; justify-content:center; gap:8px;
-                    width:100%; max-width:220px; margin:12px auto 0;
-                    min-height:48px; padding:12px 18px; font-size:1rem; font-weight:700;
-                    background:rgba(231,76,60,.2); color:#f5a0a8;
-                    border:1.5px solid var(--red); border-radius:10px; cursor:pointer;
+                 flex-shrink:0; animation:recpulse 1s ease-in-out infinite; }
+    @keyframes recpulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.7)} }
+
+    /* Timer */
+    .rec-timer { font-size:2.6rem; font-weight:700; font-variant-numeric:tabular-nums;
+                 color:#ff7043; text-align:center; letter-spacing:3px; margin:10px 0 14px; }
+
+    /* Live transcript textarea */
+    .rec-live-box { width:100%; min-height:150px; max-height:280px; overflow-y:auto;
+                    background:rgba(0,0,0,.22); border:1px solid var(--border);
+                    border-radius:10px; color:var(--text); padding:12px 14px;
+                    font-size:.95rem; font-family:inherit; line-height:1.75;
+                    resize:vertical; margin-bottom:14px; }
+    .rec-live-box:focus { outline:none; border-color:var(--lt); }
+
+    /* Control buttons row */
+    .rec-controls { display:flex; flex-wrap:wrap; gap:8px; }
+    .rec-ctrl-btn { flex:1; min-width:110px; min-height:var(--touch);
+                    padding:10px 12px; font-size:.88rem; font-weight:600;
+                    border-radius:10px; cursor:pointer; border:1.5px solid;
                     transition:background .15s; }
-    .rec-stop-btn:hover { background:rgba(231,76,60,.32); }
-    .rec-result-header { text-align:center; margin-bottom:14px; }
-    .rec-result-header .doc-badge { display:inline-flex; }
+    .rec-ctrl-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .rec-pause  { background:rgba(74,144,217,.1);  color:#a8d0f0; border-color:#2a5298; }
+    .rec-pause:hover:not(:disabled)  { background:rgba(74,144,217,.2); }
+    .rec-mark   { background:rgba(243,156,18,.1);  color:#f5c842; border-color:rgba(243,156,18,.5); }
+    .rec-mark:hover:not(:disabled)   { background:rgba(243,156,18,.22); }
+    .rec-finish { background:rgba(231,76,60,.12); color:#f5a0a8; border-color:var(--red); }
+    .rec-finish:hover:not(:disabled) { background:rgba(231,76,60,.24); }
+
+    /* Subject badge */
+    .subject-badge { display:inline-flex; align-items:center; gap:6px;
+                     background:rgba(171,71,188,.15); border:1px solid rgba(171,71,188,.4);
+                     border-radius:24px; padding:5px 14px; font-size:.88rem;
+                     font-weight:600; color:#ce93d8; margin-bottom:14px; }
+
+    /* Processing state */
+    #rec-processing { display:none; flex-direction:column; align-items:center;
+                      gap:14px; padding:28px 0; }
+    #rec-processing.visible { display:flex; }
+
+    @media (max-width:480px) {
+      .rec-controls { gap:6px; }
+      .rec-ctrl-btn { min-width:calc(50% - 4px); font-size:.82rem; }
+    }
   </style>
 </head>
 <body>
@@ -369,45 +416,53 @@
 
 <div class="section-divider">— או —</div>
 
-<!-- Recording card -->
-<div class="card" id="recording-card" style="margin-top:16px;">
-  <div style="text-align:center;margin-bottom:4px;">
-    <span style="font-size:1rem;color:var(--muted);">הקלט הרצאה וקבל סיכום מיידי</span>
+<!-- ══ Recording card ══════════════════════════════════════ -->
+<div class="card" id="rec-card" style="margin-top:16px;">
+  <h2>🎙️ הקלטת שיעור</h2>
+
+  <!-- ── State 1: setup ── -->
+  <div id="rec-setup">
+    <p style="font-size:.88rem;color:var(--muted);margin-bottom:14px;">
+      הקלט שיעור וקבל סיכום + קובץ Word מסודר עם טבלאות, כותרות ורגעים חשובים
+    </p>
+    <input class="rec-name-input" id="rec-lesson-name" type="text"
+           placeholder="שם השיעור / נושא (חובה)" maxlength="120" />
+    <button class="rec-big-btn" id="rec-start-btn">▶️ התחל הקלטה</button>
   </div>
 
-  <!-- Initial: big record button -->
-  <div id="rec-initial">
-    <button class="rec-big-btn" id="rec-start-btn">🎙️ הקלט הרצאה</button>
-  </div>
-
-  <!-- While recording: pulse dot + timer + stop -->
-  <div id="rec-recording" style="display:none;text-align:center;padding:8px 0;">
-    <div style="display:flex;align-items:center;justify-content:center;gap:10px;color:#ff7043;font-weight:600;font-size:.95rem;">
-      <div class="rec-pulse"></div><span>מקליט...</span>
+  <!-- ── State 2: active recording ── -->
+  <div id="rec-active" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:2px;">
+      <div class="rec-pulse"></div>
+      <span style="color:#ff7043;font-weight:600;font-size:.93rem;" id="rec-lesson-label"></span>
     </div>
-    <div class="rec-timer-display" id="rec-timer">00:00</div>
-    <button class="rec-stop-btn" id="rec-stop-btn">⏹️ עצור הקלטה</button>
+    <div class="rec-timer" id="rec-timer-el">00:00:00</div>
+    <textarea class="rec-live-box" id="rec-transcript" readonly
+              placeholder="התמלול יופיע כאן בזמן אמת בזמן הקלטה..."></textarea>
+    <div class="rec-controls">
+      <button class="rec-ctrl-btn rec-pause"  id="rec-pause-btn">⏸️ השהה</button>
+      <button class="rec-ctrl-btn rec-mark"   id="rec-mark-btn">⭐ סמן רגע חשוב</button>
+      <button class="rec-ctrl-btn rec-finish" id="rec-finish-btn">⏹️ סיים וסכם</button>
+    </div>
   </div>
 
-  <!-- Processing spinner -->
-  <div class="spinner-wrap" id="rec-spinner">
+  <!-- ── State 3: processing ── -->
+  <div id="rec-processing">
     <div class="spinner"></div>
-    <div class="spinner-text">מתמלל ומסכם את ההרצאה...</div>
+    <div class="spinner-text">מסכם את השיעור עם Claude...</div>
   </div>
 
   <!-- Error -->
-  <div class="error-box" id="rec-error-box"></div>
+  <div class="error-box" id="rec-error"></div>
 
-  <!-- Result -->
-  <div id="rec-result" style="display:none;">
-    <div class="rec-result-header">
-      <div class="doc-badge">🎙️ סיכום הרצאה</div>
+  <!-- ── State 4: done ── -->
+  <div id="rec-done" style="display:none;">
+    <div id="rec-subject-badge" class="subject-badge" style="display:none;"></div>
+    <div class="content-box" id="rec-summary" style="margin-bottom:14px;"></div>
+    <div class="export-row">
+      <button class="btn btn-outline" id="rec-docx-btn">📄 הורד Word מסודר</button>
     </div>
-    <div class="content-box" id="rec-summary-box"></div>
-    <div class="export-row" style="margin-top:14px;">
-      <button class="btn btn-outline" id="rec-pdf-btn">📄 הורד PDF</button>
-    </div>
-    <button class="btn btn-ghost" id="rec-reset-btn" style="margin-top:12px;">🎙️ הקלט הרצאה חדשה</button>
+    <button class="btn btn-ghost" id="rec-new-btn">🎙️ הקלט שיעור חדש</button>
   </div>
 </div>
 
@@ -822,6 +877,269 @@ function highlight(html, term) {
   const re = new RegExp("(" + term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + ")", "gi");
   return html.replace(re, "<mark>$1</mark>");
 }
+
+// ══════════════════════════════════════════════════════════════
+//  RECORDING FEATURE
+// ══════════════════════════════════════════════════════════════
+
+// ── DOM refs ─────────────────────────────────────────────────
+const recCard        = $("rec-card");
+const recSetupDiv    = $("rec-setup");
+const recLessonName  = $("rec-lesson-name");
+const recStartBtn    = $("rec-start-btn");
+const recActiveDiv   = $("rec-active");
+const recLessonLabel = $("rec-lesson-label");
+const recTimerEl     = $("rec-timer-el");
+const recTranscript  = $("rec-transcript");
+const recPauseBtn    = $("rec-pause-btn");
+const recMarkBtn     = $("rec-mark-btn");
+const recFinishBtn   = $("rec-finish-btn");
+const recProcDiv     = $("rec-processing");
+const recErrBox      = $("rec-error");
+const recDoneDiv     = $("rec-done");
+const recSubjectBadge= $("rec-subject-badge");
+const recSummaryEl   = $("rec-summary");
+const recDocxBtn     = $("rec-docx-btn");
+const recNewBtn      = $("rec-new-btn");
+
+// ── State ─────────────────────────────────────────────────────
+let recTimerInterval  = null;
+let recElapsed        = 0;          // seconds
+let recPaused         = false;
+let recShouldRestart  = false;
+let recognition       = null;
+let recTranscriptFull = "";         // confirmed (final) segments
+let recTranscriptInterim = "";      // current interim
+let recStructured     = null;
+let recSummaryText    = "";
+let recCurrentLesson  = "";
+let recSubject        = "";
+
+// ── Helpers ───────────────────────────────────────────────────
+function fmtHMS(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  return [h, m, s].map(v => String(v).padStart(2, "0")).join(":");
+}
+
+function recShowState(state) {
+  recSetupDiv.style.display  = state === "setup"      ? "block" : "none";
+  recActiveDiv.style.display = state === "active"     ? "block" : "none";
+  recProcDiv.classList.toggle("visible", state === "processing");
+  recDoneDiv.style.display   = state === "done"       ? "block" : "none";
+  recErrBox.style.display    = "none";
+}
+
+function recShowError(msg) {
+  recErrBox.textContent    = "❌ " + msg;
+  recErrBox.style.display  = "block";
+}
+
+// ── Start recording ───────────────────────────────────────────
+recStartBtn.addEventListener("click", () => {
+  const name = recLessonName.value.trim();
+  if (!name) {
+    recLessonName.classList.add("input-error");
+    recLessonName.focus();
+    return;
+  }
+  recLessonName.classList.remove("input-error");
+  recCurrentLesson = name;
+  recBeginRecording();
+});
+
+recLessonName.addEventListener("input", () => recLessonName.classList.remove("input-error"));
+
+function recBeginRecording() {
+  // Reset state
+  recElapsed        = 0;
+  recTranscriptFull = "";
+  recTranscriptInterim = "";
+  recPaused         = false;
+  recStructured     = null;
+  recSummaryText    = "";
+
+  recShowState("active");
+  recLessonLabel.textContent = recCurrentLesson;
+  recTimerEl.textContent = "00:00:00";
+  recTranscript.value = "";
+
+  // Timer
+  recTimerInterval = setInterval(() => {
+    if (!recPaused) {
+      recElapsed++;
+      recTimerEl.textContent = fmtHMS(recElapsed);
+    }
+  }, 1000);
+
+  // Speech Recognition
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    clearInterval(recTimerInterval);
+    recShowState("setup");
+    recShowError("הדפדפן שלך לא תומך בזיהוי דיבור — השתמש ב-Chrome.");
+    return;
+  }
+
+  recognition = new SpeechRec();
+  recognition.lang            = "he-IL";
+  recognition.continuous      = true;
+  recognition.interimResults  = true;
+
+  recognition.onresult = (e) => {
+    let interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        recTranscriptFull += t + " ";
+      } else {
+        interim += t;
+      }
+    }
+    recTranscriptInterim = interim;
+    recTranscript.value  = recTranscriptFull + interim;
+    recTranscript.scrollTop = recTranscript.scrollHeight;
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error !== "aborted" && e.error !== "no-speech") {
+      recShowError("שגיאה בזיהוי דיבור: " + e.error);
+    }
+  };
+
+  // Auto-restart to maintain continuous recognition
+  recognition.onend = () => {
+    if (recShouldRestart) {
+      try { recognition.start(); } catch (_) {}
+    }
+  };
+
+  recShouldRestart = true;
+  recognition.start();
+}
+
+// ── Pause / Resume ────────────────────────────────────────────
+recPauseBtn.addEventListener("click", () => {
+  recPaused = !recPaused;
+  if (recPaused) {
+    recShouldRestart = false;
+    recognition.stop();
+    recPauseBtn.textContent = "▶️ המשך";
+    recPauseBtn.style.borderColor = "var(--green)";
+    recPauseBtn.style.color = "#6fcf97";
+  } else {
+    recShouldRestart = true;
+    try { recognition.start(); } catch (_) {}
+    recPauseBtn.textContent = "⏸️ השהה";
+    recPauseBtn.style.borderColor = "";
+    recPauseBtn.style.color = "";
+  }
+});
+
+// ── Mark important moment ─────────────────────────────────────
+recMarkBtn.addEventListener("click", () => {
+  recTranscriptFull += " [⭐ רגע חשוב] ";
+  recTranscript.value = recTranscriptFull + recTranscriptInterim;
+  recTranscript.scrollTop = recTranscript.scrollHeight;
+  const orig = recMarkBtn.textContent;
+  recMarkBtn.textContent = "✅ סומן!";
+  setTimeout(() => recMarkBtn.textContent = orig, 1500);
+});
+
+// ── Finish & summarize ────────────────────────────────────────
+recFinishBtn.addEventListener("click", async () => {
+  // Stop everything
+  clearInterval(recTimerInterval); recTimerInterval = null;
+  recShouldRestart = false;
+  if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
+
+  const finalTranscript = (recTranscriptFull + recTranscriptInterim).trim();
+  if (!finalTranscript) {
+    recShowError("לא הוקלט תמלול — ודא שהמיקרופון פועל ואישרת הרשאה.");
+    return;
+  }
+
+  const durationStr = fmtHMS(recElapsed);
+  recShowState("processing");
+
+  try {
+    const res  = await fetch("/summarize-lecture", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        lesson_name: recCurrentLesson,
+        transcript:  finalTranscript,
+        duration:    durationStr,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      recShowState("active");
+      recShowError(data.error || "שגיאה בסיכום");
+      return;
+    }
+
+    recSummaryText = data.summary;
+    recStructured  = data.structured || null;
+    recSubject     = data.subject || "";
+
+    if (recSubject) {
+      recSubjectBadge.textContent  = "🎓 " + recSubject;
+      recSubjectBadge.style.display = "inline-flex";
+    } else {
+      recSubjectBadge.style.display = "none";
+    }
+
+    recSummaryEl.innerHTML = md(data.summary);
+    recShowState("done");
+    recCard.scrollIntoView({ behavior: "smooth" });
+
+    // Save to history
+    saveToHistory({
+      filename: recCurrentLesson,
+      label:    "הקלטת שיעור" + (recSubject ? " · " + recSubject : ""),
+      icon:     "🎙️",
+      doc_type: "recording",
+      summary:  data.summary,
+    });
+  } catch {
+    recShowState("active");
+    recShowError("שגיאת רשת — נסה שוב");
+  }
+});
+
+// ── Download Word ─────────────────────────────────────────────
+recDocxBtn.addEventListener("click", async () => {
+  recDocxBtn.disabled = true;
+  try {
+    const res = await fetch("/export-lecture-docx", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        lesson_name: recCurrentLesson,
+        date:        new Date().toLocaleString("he-IL"),
+        duration:    fmtHMS(recElapsed),
+        subject:     recSubject,
+        structured:  recStructured,
+        summary:     recSummaryText,
+      }),
+    });
+    if (!res.ok) { recShowError("שגיאה ביצוא Word"); return; }
+    const blob = await res.blob();
+    const a    = document.createElement("a");
+    a.href     = URL.createObjectURL(blob);
+    a.download = recCurrentLesson + ".docx";
+    a.click();
+  } catch { recShowError("שגיאת רשת ביצוא"); }
+  finally { recDocxBtn.disabled = false; }
+});
+
+// ── New recording ─────────────────────────────────────────────
+recNewBtn.addEventListener("click", () => {
+  recLessonName.value = "";
+  recShowState("setup");
+});
 </script>
 </body>
 </html>

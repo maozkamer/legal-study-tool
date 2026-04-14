@@ -1,8 +1,9 @@
 import os
 import io
 import uuid
+import json
 import logging
-from datetime import date
+from datetime import date, datetime
 from flask import Flask, request, render_template, jsonify, send_file
 import PyPDF2
 from pptx import Presentation
@@ -139,10 +140,10 @@ TYPE_LABELS = {
 #  Claude helper
 # ─────────────────────────────────────────────────────────────
 
-def _claude(prompt: str) -> str:
+def _claude(prompt: str, max_tokens: int = 2048) -> str:
     response = client.messages.create(
         model="claude-opus-4-5",
-        max_tokens=2048,
+        max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
     return response.content[0].text
@@ -376,6 +377,241 @@ def transcribe():
         return jsonify({"error": f"שגיאה בסיכום: {exc}"}), 500
 
     return jsonify({"summary": summary, "transcript": transcript_text, "duration": duration})
+
+
+@app.route("/summarize-lecture", methods=["POST"])
+def summarize_lecture():
+    data        = request.json or {}
+    lesson_name = data.get("lesson_name", "שיעור")
+    transcript  = data.get("transcript", "").strip()
+    duration    = data.get("duration", "")
+
+    if not transcript:
+        return jsonify({"error": "התמלול ריק — ודא שהמיקרופון פעל"}), 400
+
+    today    = date.today().strftime("%d/%m/%Y")
+    now_time = datetime.now().strftime("%H:%M")
+
+    prompt = (
+        f'אתה עוזר לימודים משפטי. קיבלת תמליל של שיעור בשם: "{lesson_name}"\n'
+        f"תאריך: {today}, שעה: {now_time}, משך: {duration}\n\n"
+        "זהה את הנושא המשפטי (דיני עבודה / דיני עונשין / משפט מנהלי / "
+        "משפט חוקתי / דיני חוזים / אחר).\n\n"
+        "החזר JSON בלבד — ללא markdown, ללא טקסט לפני או אחרי הסוגריים:\n"
+        "{\n"
+        '  "subject": "שם הנושא",\n'
+        '  "sections": [\n'
+        '    {"level": 1, "heading": "כותרת ראשית", "content": "תוכן"},\n'
+        '    {"level": 2, "heading": "כותרת משנה",  "content": "תוכן"}\n'
+        "  ],\n"
+        '  "concepts":  [{"term": "מושג", "definition": "הגדרה", "example": "דוגמה"}],\n'
+        '  "case_law":  [{"name": "שם התיק", "principle": "עיקרון", "relevance": "רלוונטיות"}],\n'
+        '  "statutes":  [{"law": "שם החוק", "section": "סעיף", "content": "תוכן"}],\n'
+        '  "important_moments":  ["רגע חשוב — הוצא מסימון ⭐ בתמלול"],\n'
+        '  "related_topics":     "נושאים קשורים",\n'
+        '  "instructor_emphasis":["נקודה שהמרצה הדגיש"],\n'
+        '  "key_points":         ["נקודה 1","נקודה 2","נקודה 3","נקודה 4","נקודה 5"]\n'
+        "}\n\n"
+        "אם אין פסקי דין — case_law=[]. אם אין סעיפי חוק — statutes=[].\n"
+        "רגעים חשובים מסומנים ב-⭐ בתמלול — חלץ אותם.\n\n"
+        "תמליל השיעור:\n" + transcript[:10000]
+    )
+
+    try:
+        raw = _claude(prompt, max_tokens=4096)
+        js  = raw[raw.find("{") : raw.rfind("}") + 1]
+        structured = json.loads(js)
+    except (json.JSONDecodeError, ValueError):
+        log.warning("JSON parse failed — returning plain summary")
+        structured = None
+
+    if structured is None:
+        return jsonify({"summary": raw, "subject": "שיעור", "structured": None})
+
+    subject = structured.get("subject", "שיעור")
+
+    # Build display text
+    lines = [
+        f"🎓 **נושא:** {subject}",
+        f"📅 **תאריך:** {today}   ⏱️ **משך:** {duration}\n",
+    ]
+    for sec in structured.get("sections", []):
+        lines.append(f"\n**{sec.get('heading', '')}**")
+        lines.append(sec.get("content", ""))
+    if structured.get("concepts"):
+        lines.append("\n**💡 מושגים מרכזיים:**")
+        for c in structured["concepts"]:
+            lines.append(f"• **{c.get('term','')}** — {c.get('definition','')}")
+    if structured.get("important_moments"):
+        lines.append("\n**⭐ רגעים חשובים:**")
+        for m in structured["important_moments"]:
+            lines.append(f"• {m}")
+    if structured.get("instructor_emphasis"):
+        lines.append("\n**📍 נקודות שהמרצה הדגיש:**")
+        for e in structured["instructor_emphasis"]:
+            lines.append(f"• {e}")
+    if structured.get("key_points"):
+        lines.append("\n**📌 5 נקודות עיקריות:**")
+        for i, kp in enumerate(structured["key_points"][:5], 1):
+            lines.append(f"{i}. {kp}")
+
+    return jsonify({
+        "summary":    "\n".join(lines),
+        "subject":    subject,
+        "structured": structured,
+    })
+
+
+@app.route("/export-lecture-docx", methods=["POST"])
+def export_lecture_docx():
+    from docx.shared import Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    data        = request.json or {}
+    lesson_name = data.get("lesson_name", "שיעור")
+    dt_str      = data.get("date", "")
+    duration    = data.get("duration", "")
+    subject     = data.get("subject", "")
+    structured  = data.get("structured") or {}
+    summary_txt = data.get("summary", "")
+
+    doc = Document()
+
+    def _rtl(paragraph):
+        pPr = paragraph._p.get_or_add_pPr()
+        bidi = OxmlElement("w:bidi")
+        pPr.append(bidi)
+
+    def _heading(text, level):
+        h = doc.add_heading(text, level=level)
+        _rtl(h)
+        return h
+
+    # ── Cover page ──────────────────────────────────────────────
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run(lesson_name)
+    run.bold = True
+    run.font.size = Pt(22)
+    _rtl(p)
+
+    for line in filter(None, [
+        f"📅 תאריך: {dt_str}",
+        f"⏱️ משך: {duration}",
+        f"🎓 נושא: {subject}" if subject else "",
+    ]):
+        mp = doc.add_paragraph(line)
+        mp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _rtl(mp)
+
+    doc.add_page_break()
+
+    # ── Body sections ────────────────────────────────────────────
+    for sec in structured.get("sections", []):
+        _heading(sec.get("heading", ""), level=min(sec.get("level", 1), 2))
+        content = sec.get("content", "")
+        if content:
+            cp = doc.add_paragraph(content)
+            _rtl(cp)
+
+    # ── Important moments ────────────────────────────────────────
+    moments = structured.get("important_moments", [])
+    if moments:
+        _heading("⭐ רגעים חשובים", level=1)
+        for m in moments:
+            mp = doc.add_paragraph()
+            run = mp.add_run(m)
+            run.bold = True
+            run.font.color.rgb = RGBColor(0xB8, 0x86, 0x00)
+            _rtl(mp)
+
+    # ── Concepts table ───────────────────────────────────────────
+    concepts = structured.get("concepts", [])
+    if concepts:
+        _heading("💡 טבלת מושגים", level=1)
+        tbl = doc.add_table(rows=1, cols=3)
+        tbl.style = "Table Grid"
+        hdr = tbl.rows[0].cells
+        hdr[0].text, hdr[1].text, hdr[2].text = "מושג", "הגדרה", "דוגמה"
+        for c in concepts:
+            row = tbl.add_row().cells
+            row[0].text = c.get("term", "")
+            row[1].text = c.get("definition", "")
+            row[2].text = c.get("example", "")
+        doc.add_paragraph("")
+
+    # ── Case-law table ───────────────────────────────────────────
+    case_law = structured.get("case_law", [])
+    if case_law:
+        _heading("⚖️ טבלת פסיקה", level=1)
+        tbl = doc.add_table(rows=1, cols=3)
+        tbl.style = "Table Grid"
+        hdr = tbl.rows[0].cells
+        hdr[0].text, hdr[1].text, hdr[2].text = "שם התיק", "עיקרון", "רלוונטיות"
+        for c in case_law:
+            row = tbl.add_row().cells
+            row[0].text = c.get("name", "")
+            row[1].text = c.get("principle", "")
+            row[2].text = c.get("relevance", "")
+        doc.add_paragraph("")
+
+    # ── Statutes table ───────────────────────────────────────────
+    statutes = structured.get("statutes", [])
+    if statutes:
+        _heading("📜 סעיפי חוק", level=1)
+        tbl = doc.add_table(rows=1, cols=3)
+        tbl.style = "Table Grid"
+        hdr = tbl.rows[0].cells
+        hdr[0].text, hdr[1].text, hdr[2].text = "שם החוק", "סעיף", "תוכן"
+        for s in statutes:
+            row = tbl.add_row().cells
+            row[0].text = s.get("law", "")
+            row[1].text = s.get("section", "")
+            row[2].text = s.get("content", "")
+        doc.add_paragraph("")
+
+    # ── Related topics ───────────────────────────────────────────
+    related = structured.get("related_topics", "")
+    if related:
+        _heading("🔗 קשרים לנושאים אחרים", level=1)
+        rp = doc.add_paragraph(related)
+        _rtl(rp)
+
+    # ── Instructor emphasis ──────────────────────────────────────
+    emphasis = structured.get("instructor_emphasis", [])
+    if emphasis:
+        _heading("📍 נקודות לבדיקה", level=1)
+        for e in emphasis:
+            ep = doc.add_paragraph(e, style="List Bullet")
+            _rtl(ep)
+
+    # ── Key points summary ───────────────────────────────────────
+    key_points = structured.get("key_points", [])
+    if key_points:
+        _heading("📌 5 נקודות עיקריות מהשיעור", level=1)
+        for i, kp in enumerate(key_points[:5], 1):
+            kpp = doc.add_paragraph(f"{i}. {kp}")
+            _rtl(kpp)
+
+    # ── Fallback: plain summary ──────────────────────────────────
+    if not structured.get("sections") and summary_txt:
+        _heading("סיכום", level=1)
+        for line in summary_txt.split("\n"):
+            clean = line.strip("*").strip()
+            if clean:
+                lp = doc.add_paragraph(clean)
+                _rtl(lp)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+
+    safe = "".join(c for c in lesson_name if c.isalnum() or c in " .-_()") or "שיעור"
+    return send_file(
+        buf, as_attachment=True,
+        download_name=f"{safe}.docx",
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
 
 
 if __name__ == "__main__":
