@@ -3,45 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>עוזר הלימודים המשפטי שלי</title>
+  <title>עוזר הלימודים המשפטי</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --bg:        #0d1b2a;
+      --card:      #132238;
+      --border:    #1e3a5f;
+      --accent:    #2a79d5;
+      --accent-lt: #4a90d9;
+      --text:      #e8edf2;
+      --muted:     #8fa8c0;
+      --green:     #27ae60;
+      --red:       #e74c3c;
+      --touch:     48px;   /* minimum tap target */
+    }
+
+    html { font-size: 16px; }
+
     body {
       font-family: "Segoe UI", Arial, sans-serif;
-      background: #0d1b2a;
-      color: #e8edf2;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 40px 16px 60px;
+      padding: 28px 12px 64px;
     }
 
     /* ── Header ── */
-    header {
-      text-align: center;
-      margin-bottom: 40px;
-    }
-    header .logo { font-size: 2.6rem; margin-bottom: 8px; }
-    header h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: -0.5px;
-    }
-    header p {
-      margin-top: 8px;
-      color: #8fa8c0;
-      font-size: 1rem;
-    }
+    header { text-align: center; margin-bottom: 28px; }
+    header .logo { font-size: 2.4rem; margin-bottom: 6px; }
+    header h1   { font-size: 1.75rem; font-weight: 700; color: #fff; }
+    header p    { margin-top: 6px; color: var(--muted); font-size: 0.95rem; }
 
     /* ── Card ── */
     .card {
-      background: #132238;
-      border: 1px solid #1e3a5f;
+      background: var(--card);
+      border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 36px;
+      padding: 24px 20px;
       width: 100%;
       max-width: 680px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.4);
@@ -51,183 +54,214 @@
     .upload-zone {
       border: 2px dashed #2a5298;
       border-radius: 12px;
-      padding: 48px 24px;
+      padding: 40px 16px;
       text-align: center;
       cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
       position: relative;
+      transition: border-color 0.2s, background 0.2s;
     }
-    .upload-zone:hover,
-    .upload-zone.drag-over {
-      border-color: #4a90d9;
-      background: rgba(74, 144, 217, 0.06);
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--accent-lt);
+      background: rgba(74,144,217,0.06);
     }
     .upload-zone input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-      width: 100%;
-      height: 100%;
+      position: absolute; inset: 0; opacity: 0;
+      cursor: pointer; width: 100%; height: 100%;
     }
-    .upload-icon { font-size: 3rem; margin-bottom: 12px; }
-    .upload-title {
-      font-size: 1.15rem;
-      font-weight: 600;
-      color: #c9dff2;
-      margin-bottom: 6px;
-    }
-    .upload-sub { color: #6a8aa8; font-size: 0.9rem; }
+    .upload-icon  { font-size: 2.8rem; margin-bottom: 10px; }
+    .upload-title { font-size: 1.1rem; font-weight: 600; color: #c9dff2; margin-bottom: 4px; }
+    .upload-sub   { color: #6a8aa8; font-size: 0.88rem; }
 
-    /* ── Button ── */
-    .btn-upload {
-      display: block;
-      width: 100%;
-      margin-top: 24px;
-      padding: 14px;
-      background: linear-gradient(135deg, #1a5fb4, #2a79d5);
-      color: #fff;
-      font-size: 1.05rem;
-      font-weight: 600;
-      border: none;
-      border-radius: 10px;
+    #file-label {
+      margin-top: 12px; font-size: 0.9rem;
+      color: var(--accent-lt); text-align: center; min-height: 20px;
+    }
+
+    /* ── Buttons (all ≥ 48px height) ── */
+    .btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; min-height: var(--touch);
+      padding: 12px 16px;
+      font-size: 1rem; font-weight: 600;
+      border: none; border-radius: 10px;
       cursor: pointer;
       transition: opacity 0.2s, transform 0.1s;
     }
-    .btn-upload:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
-    .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn:active:not(:disabled) { transform: scale(0.98); }
+    .btn:disabled              { opacity: 0.45; cursor: not-allowed; }
 
-    /* ── File selected label ── */
-    #file-label {
-      margin-top: 14px;
-      font-size: 0.9rem;
-      color: #4a90d9;
-      text-align: center;
-      min-height: 20px;
+    .btn-primary {
+      background: linear-gradient(135deg, #1a5fb4, var(--accent));
+      color: #fff; margin-top: 20px;
     }
+    .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+
+    .btn-outline {
+      background: rgba(74,144,217,0.1);
+      color: #a8d0f0;
+      border: 1.5px solid #2a5298;
+    }
+    .btn-outline:hover:not(:disabled) { background: rgba(74,144,217,0.2); }
+
+    .btn-ghost {
+      background: transparent; color: var(--accent-lt);
+      border: 1.5px solid #2a5298; margin-top: 16px;
+    }
+    .btn-ghost:hover { background: rgba(74,144,217,0.08); }
+
+    /* ── Actions row ── */
+    .actions-row {
+      display: flex; gap: 10px; margin-top: 16px;
+    }
+    .actions-row .btn { font-size: 0.95rem; }
 
     /* ── Spinner ── */
     .spinner-wrap {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-      margin-top: 32px;
+      display: none; flex-direction: column;
+      align-items: center; gap: 14px; margin-top: 28px;
     }
     .spinner-wrap.visible { display: flex; }
     .spinner {
-      width: 44px; height: 44px;
-      border: 4px solid #1e3a5f;
-      border-top-color: #4a90d9;
+      width: 42px; height: 42px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent-lt);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner-text { color: #8fa8c0; font-size: 0.95rem; }
-
-    /* ── Result ── */
-    #result { display: none; margin-top: 36px; }
-
-    .doc-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(74, 144, 217, 0.15);
-      border: 1px solid #2a5298;
-      border-radius: 24px;
-      padding: 6px 16px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #a8d0f0;
-      margin-bottom: 20px;
-    }
-
-    .summary-box {
-      background: #0d1b2a;
-      border: 1px solid #1e3a5f;
-      border-radius: 12px;
-      padding: 24px;
-      line-height: 1.8;
-      font-size: 0.97rem;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    /* Markdown-style bold */
-    .summary-box strong { color: #7ec8e3; font-weight: 700; }
-
-    /* ── Extra actions ── */
-    .actions-row {
-      display: flex;
-      gap: 12px;
-      margin-top: 20px;
-    }
-    .btn-action {
-      flex: 1;
-      padding: 12px 8px;
-      background: rgba(74, 144, 217, 0.12);
-      color: #a8d0f0;
-      font-size: 0.95rem;
-      font-weight: 600;
-      border: 1.5px solid #2a5298;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-    }
-    .btn-action:hover:not(:disabled) {
-      background: rgba(74, 144, 217, 0.22);
-      transform: translateY(-1px);
-    }
-    .btn-action:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    /* ── Extra result panel ── */
-    #extra-result {
-      display: none;
-      margin-top: 24px;
-      background: #0d1b2a;
-      border: 1px solid #1e3a5f;
-      border-radius: 12px;
-      padding: 24px;
-      line-height: 1.8;
-      font-size: 0.97rem;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    #extra-result strong { color: #7ec8e3; font-weight: 700; }
-
-    .btn-reset {
-      display: block;
-      width: 100%;
-      margin-top: 20px;
-      padding: 12px;
-      background: transparent;
-      color: #4a90d9;
-      font-size: 0.95rem;
-      font-weight: 600;
-      border: 1.5px solid #2a5298;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .btn-reset:hover { background: rgba(74, 144, 217, 0.08); }
+    .spinner-text { color: var(--muted); font-size: 0.95rem; }
 
     /* ── Error ── */
     .error-box {
-      background: rgba(220, 53, 69, 0.12);
-      border: 1px solid rgba(220, 53, 69, 0.4);
-      border-radius: 10px;
-      padding: 16px 20px;
-      color: #f5a0a8;
-      margin-top: 24px;
-      display: none;
+      background: rgba(220,53,69,0.12);
+      border: 1px solid rgba(220,53,69,0.4);
+      border-radius: 10px; padding: 14px 18px;
+      color: #f5a0a8; margin-top: 20px; display: none;
+      font-size: 0.95rem;
     }
 
+    /* ── Result ── */
+    #result { display: none; margin-top: 28px; }
+
+    .doc-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(74,144,217,0.15); border: 1px solid #2a5298;
+      border-radius: 24px; padding: 6px 16px;
+      font-size: 0.95rem; font-weight: 600; color: #a8d0f0;
+      margin-bottom: 16px;
+    }
+
+    .summary-box {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px;
+      line-height: 1.85; font-size: 0.97rem;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .summary-box strong { color: #7ec8e3; font-weight: 700; }
+
+    /* ── Quiz panel ── */
+    #quiz-panel { display: none; margin-top: 20px; }
+
+    .quiz-progress {
+      font-size: 0.85rem; color: var(--muted);
+      margin-bottom: 14px; text-align: center;
+    }
+    .progress-bar-wrap {
+      background: var(--border); border-radius: 99px;
+      height: 6px; margin-bottom: 18px; overflow: hidden;
+    }
+    .progress-bar {
+      background: var(--accent-lt); height: 100%;
+      border-radius: 99px; transition: width 0.3s;
+    }
+
+    .question-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px;
+    }
+    .question-text {
+      font-size: 1.05rem; font-weight: 600; line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .options-grid {
+      display: grid; gap: 10px;
+    }
+    .opt-btn {
+      display: flex; align-items: center; gap: 12px;
+      min-height: var(--touch); padding: 12px 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1.5px solid var(--border);
+      border-radius: 10px; cursor: pointer; text-align: right;
+      font-size: 0.97rem; color: var(--text);
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .opt-btn:hover:not(:disabled) {
+      background: rgba(74,144,217,0.12);
+      border-color: var(--accent-lt);
+    }
+    .opt-btn:disabled { cursor: default; }
+    .opt-btn .opt-letter {
+      flex-shrink: 0; width: 32px; height: 32px;
+      border-radius: 50%; background: var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.9rem;
+    }
+    .opt-btn.correct { background: rgba(39,174,96,0.18); border-color: var(--green); }
+    .opt-btn.correct .opt-letter { background: var(--green); color: #fff; }
+    .opt-btn.wrong   { background: rgba(231,76,60,0.18);  border-color: var(--red); }
+    .opt-btn.wrong   .opt-letter { background: var(--red);   color: #fff; }
+
+    .feedback-box {
+      margin-top: 16px; padding: 16px 18px;
+      border-radius: 10px; line-height: 1.7; font-size: 0.97rem;
+      display: none;
+    }
+    .feedback-box.correct { background: rgba(39,174,96,0.15); border: 1px solid rgba(39,174,96,0.4); }
+    .feedback-box.wrong   { background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.4); }
+
+    /* ── Results screen ── */
+    #results-screen { display: none; margin-top: 20px; text-align: center; }
+    .score-circle {
+      width: 100px; height: 100px; border-radius: 50%;
+      background: rgba(74,144,217,0.15); border: 3px solid var(--accent);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .score-number { font-size: 2rem; font-weight: 700; color: var(--accent-lt); }
+    .score-label  { font-size: 0.8rem; color: var(--muted); }
+    .wrong-list {
+      text-align: right; margin-top: 16px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px;
+    }
+    .wrong-list h3 { font-size: 0.95rem; color: var(--muted); margin-bottom: 10px; }
+    .wrong-list li { font-size: 0.93rem; line-height: 1.7; margin-right: 16px; }
+
+    /* ── Flashcards / open questions ── */
+    #extra-result {
+      display: none; margin-top: 20px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px;
+      line-height: 1.85; font-size: 0.97rem;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    #extra-result strong { color: #7ec8e3; font-weight: 700; }
+
     /* ── Footer ── */
-    footer {
-      margin-top: 48px;
-      color: #3a5a78;
-      font-size: 0.82rem;
-      text-align: center;
+    footer { margin-top: 40px; color: #3a5a78; font-size: 0.82rem; text-align: center; }
+
+    /* ── Responsive tweaks ── */
+    @media (max-width: 480px) {
+      body    { padding: 16px 10px 56px; }
+      .card   { padding: 18px 14px; border-radius: 12px; }
+      header h1 { font-size: 1.45rem; }
+      .upload-zone { padding: 32px 12px; }
+      .upload-icon { font-size: 2.2rem; }
+      .summary-box, #extra-result, .question-card { padding: 14px; }
+      .actions-row { flex-direction: column; }
+      .question-text { font-size: 1rem; }
     }
   </style>
 </head>
@@ -235,184 +269,404 @@
 
 <header>
   <div class="logo">⚖️</div>
-  <h1>עוזר הלימודים המשפטי שלי</h1>
+  <h1>עוזר הלימודים המשפטי</h1>
   <p>העלה פסק דין, חקיקה או חומר לימוד — וקבל סיכום חכם מיד</p>
 </header>
 
 <div class="card">
-  <!-- Upload zone -->
+
+  <!-- Upload -->
   <div class="upload-zone" id="drop-zone">
     <input type="file" id="file-input" accept=".pdf,.pptx,.docx,.txt" />
     <div class="upload-icon">📂</div>
     <div class="upload-title">גרור קובץ לכאן או לחץ לבחירה</div>
-    <div class="upload-sub">קבצים נתמכים: PDF, PPTX, DOCX, TXT · עד 20MB</div>
+    <div class="upload-sub">PDF, PPTX, DOCX, TXT · עד 20MB</div>
   </div>
-
   <div id="file-label"></div>
+  <button class="btn btn-primary" id="upload-btn" disabled>סכם את המסמך</button>
 
-  <button class="btn-upload" id="upload-btn" disabled>סכם את המסמך</button>
-
-  <!-- Spinner -->
+  <!-- Main spinner -->
   <div class="spinner-wrap" id="spinner">
     <div class="spinner"></div>
-    <div class="spinner-text">מנתח את המסמך... זה עשוי לקחת כמה שניות</div>
+    <div class="spinner-text">מנתח את המסמך...</div>
   </div>
 
   <!-- Error -->
   <div class="error-box" id="error-box"></div>
 
-  <!-- Result -->
+  <!-- Summary result -->
   <div id="result">
     <div class="doc-badge" id="doc-badge"></div>
     <div class="summary-box" id="summary-box"></div>
 
-    <!-- Extra actions -->
     <div class="actions-row">
-      <button class="btn-action" id="questions-btn">📝 צור שאלות לבחינה</button>
-      <button class="btn-action" id="flashcards-btn">🃏 צור כרטיסיות חזרה</button>
+      <button class="btn btn-outline" id="questions-btn">📝 שאלות לבחינה</button>
+      <button class="btn btn-outline" id="flashcards-btn">🃏 כרטיסיות חזרה</button>
     </div>
 
-    <!-- Extra spinner -->
+    <!-- Extra spinner (questions / flashcards) -->
     <div class="spinner-wrap" id="extra-spinner">
       <div class="spinner"></div>
       <div class="spinner-text" id="extra-spinner-text">יוצר...</div>
     </div>
 
-    <!-- Extra result -->
+    <!-- Interactive quiz -->
+    <div id="quiz-panel">
+      <div class="quiz-progress" id="quiz-progress"></div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+
+      <div class="question-card">
+        <div class="question-text" id="question-text"></div>
+        <div class="options-grid" id="options-grid"></div>
+        <div class="feedback-box" id="feedback-box"></div>
+      </div>
+
+      <button class="btn btn-primary" id="next-btn" style="display:none;margin-top:14px;">
+        שאלה הבאה ←
+      </button>
+    </div>
+
+    <!-- Results screen -->
+    <div id="results-screen">
+      <div class="score-circle">
+        <div class="score-number" id="score-number"></div>
+        <div class="score-label">מתוך 5</div>
+      </div>
+      <div style="font-size:1.3rem;font-weight:700;" id="results-title"></div>
+      <div class="wrong-list" id="wrong-list" style="display:none;">
+        <h3>שאלות שטעית בהן:</h3>
+        <ul id="wrong-items"></ul>
+      </div>
+      <div class="actions-row" style="margin-top:16px;">
+        <button class="btn btn-outline" id="retry-btn">🔄 נסה שוב</button>
+        <button class="btn btn-outline" id="open-btn">📖 שאלות פתוחות</button>
+      </div>
+    </div>
+
+    <!-- Open questions + flashcards text output -->
     <div id="extra-result"></div>
 
-    <button class="btn-reset" id="reset-btn">⬆️ העלה מסמך נוסף</button>
+    <button class="btn btn-ghost" id="reset-btn">⬆️ העלה מסמך נוסף</button>
   </div>
+
 </div>
 
 <footer>מופעל על ידי Claude AI · לצרכי לימוד בלבד</footer>
 
 <script>
-  const fileInput       = document.getElementById("file-input");
-  const dropZone        = document.getElementById("drop-zone");
-  const fileLabel       = document.getElementById("file-label");
-  const uploadBtn       = document.getElementById("upload-btn");
-  const spinner         = document.getElementById("spinner");
-  const errorBox        = document.getElementById("error-box");
-  const result          = document.getElementById("result");
-  const docBadge        = document.getElementById("doc-badge");
-  const summaryBox      = document.getElementById("summary-box");
-  const resetBtn        = document.getElementById("reset-btn");
-  const questionsBtn    = document.getElementById("questions-btn");
-  const flashcardsBtn   = document.getElementById("flashcards-btn");
-  const extraSpinner    = document.getElementById("extra-spinner");
-  const extraSpinnerTxt = document.getElementById("extra-spinner-text");
-  const extraResult     = document.getElementById("extra-result");
+// ── DOM refs ────────────────────────────────────────────────
+const fileInput       = document.getElementById("file-input");
+const dropZone        = document.getElementById("drop-zone");
+const fileLabel       = document.getElementById("file-label");
+const uploadBtn       = document.getElementById("upload-btn");
+const spinner         = document.getElementById("spinner");
+const errorBox        = document.getElementById("error-box");
+const resultDiv       = document.getElementById("result");
+const docBadge        = document.getElementById("doc-badge");
+const summaryBox      = document.getElementById("summary-box");
+const questionsBtn    = document.getElementById("questions-btn");
+const flashcardsBtn   = document.getElementById("flashcards-btn");
+const extraSpinner    = document.getElementById("extra-spinner");
+const extraSpinnerTxt = document.getElementById("extra-spinner-text");
+const quizPanel       = document.getElementById("quiz-panel");
+const quizProgress    = document.getElementById("quiz-progress");
+const progressBar     = document.getElementById("progress-bar");
+const questionText    = document.getElementById("question-text");
+const optionsGrid     = document.getElementById("options-grid");
+const feedbackBox     = document.getElementById("feedback-box");
+const nextBtn         = document.getElementById("next-btn");
+const resultsScreen   = document.getElementById("results-screen");
+const scoreNumber     = document.getElementById("score-number");
+const resultsTitle    = document.getElementById("results-title");
+const wrongList       = document.getElementById("wrong-list");
+const wrongItems      = document.getElementById("wrong-items");
+const retryBtn        = document.getElementById("retry-btn");
+const openBtn         = document.getElementById("open-btn");
+const extraResult     = document.getElementById("extra-result");
+const resetBtn        = document.getElementById("reset-btn");
 
-  let selectedFile = null;
-  let docToken     = null;
+// ── State ───────────────────────────────────────────────────
+let selectedFile  = null;
+let docToken      = null;
+let mcQuestions   = [];   // parsed MC questions
+let openQText     = "";   // raw text of open questions section
+let currentQ      = 0;
+let score         = 0;
+let wrongQuestions = [];
 
-  function setFile(file) {
-    if (!file) return;
-    const ext = file.name.split(".").pop().toLowerCase();
-    if (!["pdf", "pptx", "docx", "txt"].includes(ext)) {
-      showError("סוג קובץ לא נתמך. אנא בחר קובץ PDF, PPTX, DOCX או TXT.");
+// ── File handling ────────────────────────────────────────────
+function setFile(file) {
+  if (!file) return;
+  const ext = file.name.split(".").pop().toLowerCase();
+  if (!["pdf","pptx","docx","txt"].includes(ext)) {
+    showError("סוג קובץ לא נתמך. אנא בחר PDF, PPTX, DOCX או TXT.");
+    return;
+  }
+  selectedFile = file;
+  fileLabel.textContent = "📄 " + file.name;
+  uploadBtn.disabled = false;
+  hideError();
+}
+
+fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
+dropZone.addEventListener("dragover",  e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+dropZone.addEventListener("drop", e => { e.preventDefault(); dropZone.classList.remove("drag-over"); setFile(e.dataTransfer.files[0]); });
+
+// ── Upload ───────────────────────────────────────────────────
+uploadBtn.addEventListener("click", async () => {
+  if (!selectedFile) return;
+  uploadBtn.disabled = true;
+  spinner.classList.add("visible");
+  resultDiv.style.display = "none";
+  hideError();
+
+  const form = new FormData();
+  form.append("file", selectedFile);
+
+  try {
+    const res  = await fetch("/upload", { method:"POST", body: form });
+    const data = await res.json();
+    if (!res.ok || data.error) { showError(data.error || "שגיאה בלתי צפויה"); return; }
+
+    docToken = data.token;
+    docBadge.innerHTML   = data.icon + " " + data.label;
+    summaryBox.innerHTML = md(data.summary);
+
+    // Reset quiz area
+    hideQuizPanels();
+    resultDiv.style.display = "block";
+  } catch { showError("שגיאת רשת — נסה שוב"); }
+  finally  { spinner.classList.remove("visible"); uploadBtn.disabled = false; }
+});
+
+// ── Fetch questions ──────────────────────────────────────────
+questionsBtn.addEventListener("click", async () => {
+  if (!docToken) return;
+  setExtraLoading(true, "יוצר שאלות לבחינה...");
+  hideQuizPanels();
+
+  try {
+    const res  = await fetch("/questions", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ token: docToken }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) { showError(data.error || "שגיאה"); return; }
+
+    const parsed = parseQuestions(data.result);
+    mcQuestions   = parsed.mc;
+    openQText     = parsed.open;
+
+    if (mcQuestions.length === 0) {
+      extraResult.innerHTML     = md(data.result);
+      extraResult.style.display = "block";
       return;
     }
-    selectedFile = file;
-    fileLabel.textContent = `📄 ${file.name}`;
-    uploadBtn.disabled = false;
-    hideError();
+    startQuiz();
+  } catch { showError("שגיאת רשת — נסה שוב"); }
+  finally  { setExtraLoading(false); }
+});
+
+// ── Fetch flashcards ─────────────────────────────────────────
+flashcardsBtn.addEventListener("click", async () => {
+  if (!docToken) return;
+  setExtraLoading(true, "יוצר כרטיסיות חזרה...");
+  hideQuizPanels();
+
+  try {
+    const res  = await fetch("/flashcards", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ token: docToken }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) { showError(data.error || "שגיאה"); return; }
+
+    extraResult.innerHTML     = md(data.result);
+    extraResult.style.display = "block";
+  } catch { showError("שגיאת רשת — נסה שוב"); }
+  finally  { setExtraLoading(false); }
+});
+
+// ── Parse questions from Claude's response ───────────────────
+function parseQuestions(text) {
+  const splitMarker = text.search(/שאלות פתוחות/);
+  const mcSection   = splitMarker >= 0 ? text.slice(0, splitMarker) : text;
+  const openSection = splitMarker >= 0 ? text.slice(splitMarker)    : "";
+
+  const mc = [];
+  // Each block starts at a line like "1." through "5."
+  const blocks = mcSection.split(/\n(?=\d+\.)/);
+
+  for (const block of blocks) {
+    const qMatch = block.match(/^\d+\.\s*([\s\S]+?)(?=\nא\.)/);
+    if (!qMatch) continue;
+
+    const qText  = qMatch[1].trim();
+    const optA   = (block.match(/^א\.\s*(.+)/m) || [])[1]?.trim();
+    const optB   = (block.match(/^ב\.\s*(.+)/m) || [])[1]?.trim();
+    const optC   = (block.match(/^ג\.\s*(.+)/m) || [])[1]?.trim();
+    const optD   = (block.match(/^ד\.\s*(.+)/m) || [])[1]?.trim();
+    const cMatch = block.match(/תשובה נכונה[:\s]+([אבגד])/);
+    if (!qText || !optA || !cMatch) continue;
+
+    mc.push({
+      text: qText,
+      options: [ ["א", optA], ["ב", optB || ""], ["ג", optC || ""], ["ד", optD || ""] ],
+      correct: cMatch[1],
+    });
   }
 
-  fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
+  return { mc: mc.slice(0, 5), open: openSection };
+}
 
-  dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
-  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
-  dropZone.addEventListener("drop", e => {
-    e.preventDefault();
-    dropZone.classList.remove("drag-over");
-    setFile(e.dataTransfer.files[0]);
+// ── Quiz logic ───────────────────────────────────────────────
+function startQuiz() {
+  currentQ       = 0;
+  score          = 0;
+  wrongQuestions = [];
+  quizPanel.style.display      = "block";
+  resultsScreen.style.display  = "none";
+  extraResult.style.display    = "none";
+  showQuestion();
+}
+
+function showQuestion() {
+  const total = mcQuestions.length;
+  const q     = mcQuestions[currentQ];
+
+  quizProgress.textContent        = "שאלה " + (currentQ + 1) + " מתוך " + total;
+  progressBar.style.width         = ((currentQ / total) * 100) + "%";
+  questionText.textContent        = q.text;
+  feedbackBox.style.display       = "none";
+  feedbackBox.className           = "feedback-box";
+  nextBtn.style.display           = "none";
+  optionsGrid.innerHTML           = "";
+
+  q.options.forEach(([letter, text]) => {
+    if (!text) return;
+    const btn = document.createElement("button");
+    btn.className = "opt-btn";
+    btn.innerHTML =
+      '<span class="opt-letter">' + letter + '</span>' +
+      '<span class="opt-text">'   + escHtml(text) + '</span>';
+    btn.addEventListener("click", () => handleAnswer(letter, q));
+    optionsGrid.appendChild(btn);
+  });
+}
+
+function handleAnswer(chosen, q) {
+  // Disable all options
+  optionsGrid.querySelectorAll(".opt-btn").forEach(b => {
+    b.disabled = true;
+    const letter = b.querySelector(".opt-letter").textContent;
+    if (letter === q.correct) b.classList.add("correct");
+    if (letter === chosen && chosen !== q.correct) b.classList.add("wrong");
   });
 
-  uploadBtn.addEventListener("click", async () => {
-    if (!selectedFile) return;
-    uploadBtn.disabled = true;
-    spinner.classList.add("visible");
-    result.style.display = "none";
-    hideError();
+  const isCorrect = chosen === q.correct;
+  if (isCorrect) {
+    score++;
+    feedbackBox.className   = "feedback-box correct";
+    feedbackBox.innerHTML   = "✅ <strong>נכון! כל הכבוד!</strong>";
+  } else {
+    wrongQuestions.push(q.text);
+    const correctText = q.options.find(([l]) => l === q.correct)?.[1] || "";
+    feedbackBox.className = "feedback-box wrong";
+    feedbackBox.innerHTML =
+      "❌ <strong>לא נכון.</strong><br>" +
+      "✅ התשובה הנכונה: <strong>" + q.correct + ". " + escHtml(correctText) + "</strong>";
+  }
+  feedbackBox.style.display = "block";
+  nextBtn.style.display     = "block";
+}
 
-    const formData = new FormData();
-    formData.append("file", selectedFile);
+nextBtn.addEventListener("click", () => {
+  currentQ++;
+  if (currentQ < mcQuestions.length) {
+    showQuestion();
+  } else {
+    showResults();
+  }
+});
 
-    try {
-      const res  = await fetch("/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok || data.error) { showError(data.error || "אירעה שגיאה בלתי צפויה"); return; }
+function showResults() {
+  progressBar.style.width           = "100%";
+  quizPanel.querySelector(".question-card").style.display = "none";
+  nextBtn.style.display             = "none";
+  resultsScreen.style.display       = "block";
+  scoreNumber.textContent           = score;
 
-      docToken = data.token;
-      docBadge.innerHTML         = `${data.icon} ${data.label}`;
-      summaryBox.innerHTML       = renderMarkdown(data.summary);
-      extraResult.style.display  = "none";
-      extraResult.innerHTML      = "";
-      result.style.display       = "block";
-    } catch {
-      showError("שגיאת רשת — אנא נסה שוב");
-    } finally {
-      spinner.classList.remove("visible");
-      uploadBtn.disabled = false;
-    }
-  });
+  const pct = score / mcQuestions.length;
+  if (pct === 1)      resultsTitle.textContent = "🎓 מושלם! ציון מלא!";
+  else if (pct >= .6) resultsTitle.textContent = "👍 כל הכבוד! ציון טוב";
+  else                resultsTitle.textContent = "📚 כדאי לחזור על החומר";
 
-  async function runExtra(endpoint, spinnerText) {
-    if (!docToken) return;
-    questionsBtn.disabled  = true;
-    flashcardsBtn.disabled = true;
-    extraSpinnerTxt.textContent = spinnerText;
-    extraSpinner.classList.add("visible");
-    extraResult.style.display = "none";
-
-    try {
-      const res  = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: docToken }),
-      });
-      const data = await res.json();
-      if (!res.ok || data.error) { showError(data.error || "שגיאה"); return; }
-      extraResult.innerHTML     = renderMarkdown(data.result);
-      extraResult.style.display = "block";
-    } catch {
-      showError("שגיאת רשת — אנא נסה שוב");
-    } finally {
-      extraSpinner.classList.remove("visible");
-      questionsBtn.disabled  = false;
-      flashcardsBtn.disabled = false;
-    }
+  if (wrongQuestions.length > 0) {
+    wrongItems.innerHTML = wrongQuestions
+      .map(q => "<li>" + escHtml(q) + "</li>").join("");
+    wrongList.style.display = "block";
+  } else {
+    wrongList.style.display = "none";
   }
 
-  questionsBtn.addEventListener("click",  () => runExtra("/questions",  "יוצר שאלות לבחינה..."));
-  flashcardsBtn.addEventListener("click", () => runExtra("/flashcards", "יוצר כרטיסיות חזרה..."));
+  openBtn.style.display = openQText.trim() ? "flex" : "none";
+}
 
-  resetBtn.addEventListener("click", () => {
-    selectedFile = null;
-    docToken     = null;
-    fileInput.value           = "";
-    fileLabel.textContent     = "";
-    uploadBtn.disabled        = true;
-    result.style.display      = "none";
-    extraResult.style.display = "none";
-    hideError();
-  });
+retryBtn.addEventListener("click", () => {
+  quizPanel.querySelector(".question-card").style.display = "block";
+  resultsScreen.style.display = "none";
+  startQuiz();
+});
 
-  function showError(msg) {
-    errorBox.textContent     = "❌ " + msg;
-    errorBox.style.display   = "block";
-  }
-  function hideError() { errorBox.style.display = "none"; }
+openBtn.addEventListener("click", () => {
+  extraResult.innerHTML     = md(openQText);
+  extraResult.style.display = "block";
+  extraResult.scrollIntoView({ behavior:"smooth", block:"start" });
+});
 
-  function renderMarkdown(text) {
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\n/g, "<br>");
-  }
+// ── Reset ────────────────────────────────────────────────────
+resetBtn.addEventListener("click", () => {
+  selectedFile = null; docToken = null;
+  fileInput.value = ""; fileLabel.textContent = "";
+  uploadBtn.disabled = true;
+  resultDiv.style.display = "none";
+  hideQuizPanels();
+  hideError();
+});
+
+// ── Helpers ──────────────────────────────────────────────────
+function hideQuizPanels() {
+  quizPanel.style.display     = "none";
+  resultsScreen.style.display = "none";
+  extraResult.style.display   = "none";
+  extraResult.innerHTML       = "";
+}
+
+function setExtraLoading(on, text) {
+  questionsBtn.disabled  = on;
+  flashcardsBtn.disabled = on;
+  extraSpinnerTxt.textContent = text || "";
+  extraSpinner.classList.toggle("visible", on);
+}
+
+function showError(msg) {
+  errorBox.textContent   = "❌ " + msg;
+  errorBox.style.display = "block";
+}
+function hideError() { errorBox.style.display = "none"; }
+
+function escHtml(t) {
+  return String(t)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function md(text) {
+  return escHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br>");
+}
 </script>
 </body>
 </html>
