@@ -209,6 +209,34 @@
 
     footer { margin-top:40px; color:#3a5a78; font-size:.82rem; text-align:center; }
 
+    /* ── Share panel ── */
+    .share-panel { margin-top:16px; }
+    .share-options { display:none; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+    .share-options.open { display:grid; }
+    .share-btn { display:flex; align-items:center; justify-content:center; gap:8px;
+                 min-height:52px; padding:12px 16px; font-size:.95rem; font-weight:600;
+                 border-radius:12px; cursor:pointer; transition:opacity .2s,transform .1s;
+                 border:1.5px solid; }
+    .share-btn:active { transform:scale(.97); }
+    .share-copy      { background:rgba(74,144,217,.12); color:#a8d0f0; border-color:#2a5298; }
+    .share-copy:hover { background:rgba(74,144,217,.22); }
+    .share-email     { background:rgba(39,174,96,.1); color:#6fcf97; border-color:var(--green); }
+    .share-email:hover { background:rgba(39,174,96,.2); }
+    .share-whatsapp  { background:rgba(37,211,102,.1); color:#25d366; border-color:#25d366; }
+    .share-whatsapp:hover { background:rgba(37,211,102,.2); }
+    .share-docx-dl   { background:rgba(243,156,18,.1); color:#f5c842; border-color:rgba(243,156,18,.5); }
+    .share-docx-dl:hover { background:rgba(243,156,18,.2); }
+    .share-toggle-btn { width:100%; min-height:var(--touch); padding:12px 16px; font-size:.97rem;
+                        font-weight:600; background:rgba(74,144,217,.08); color:#a8d0f0;
+                        border:1.5px solid #2a5298; border-radius:10px; cursor:pointer;
+                        transition:background .15s; display:flex; align-items:center;
+                        justify-content:center; gap:8px; }
+    .share-toggle-btn:hover { background:rgba(74,144,217,.18); }
+    @media (max-width:480px) {
+      .share-options { grid-template-columns:1fr; }
+      .share-btn { font-size:.97rem; min-height:54px; }
+    }
+
     /* ── Recording feature ── */
     .section-divider { display:flex; align-items:center; gap:12px;
                        margin:24px 0 0; width:100%; max-width:680px;
@@ -347,6 +375,17 @@
       <button class="btn btn-outline" id="docx-btn">📝 שמור כ-Word</button>
     </div>
 
+    <!-- Share -->
+    <div class="share-panel" id="share-panel">
+      <button class="share-toggle-btn" id="share-toggle">📤 שתף סיכום</button>
+      <div class="share-options" id="share-options">
+        <button class="share-btn share-copy"      id="share-copy">📋 העתק טקסט</button>
+        <button class="share-btn share-email"     id="share-email">📧 שלח במייל</button>
+        <button class="share-btn share-whatsapp"  id="share-whatsapp">💬 שתף בוואטסאפ</button>
+        <button class="share-btn share-docx-dl"   id="share-docx-dl">📥 הורד Word</button>
+      </div>
+    </div>
+
     <!-- Quiz actions -->
     <div class="actions-row">
       <button class="btn btn-outline" id="questions-btn">📝 שאלות לבחינה</button>
@@ -462,6 +501,18 @@
     <div class="export-row">
       <button class="btn btn-outline" id="rec-docx-btn">📄 הורד Word מסודר</button>
     </div>
+
+    <!-- Share -->
+    <div class="share-panel" id="rec-share-panel">
+      <button class="share-toggle-btn" id="rec-share-toggle">📤 שתף סיכום</button>
+      <div class="share-options" id="rec-share-options">
+        <button class="share-btn share-copy"      id="rec-share-copy">📋 העתק טקסט</button>
+        <button class="share-btn share-email"     id="rec-share-email">📧 שלח במייל</button>
+        <button class="share-btn share-whatsapp"  id="rec-share-whatsapp">💬 שתף בוואטסאפ</button>
+        <button class="share-btn share-docx-dl"   id="rec-share-docx-dl">📥 הורד Word</button>
+      </div>
+    </div>
+
     <button class="btn btn-ghost" id="rec-new-btn">🎙️ הקלט שיעור חדש</button>
   </div>
 </div>
@@ -1139,6 +1190,71 @@ recDocxBtn.addEventListener("click", async () => {
 recNewBtn.addEventListener("click", () => {
   recLessonName.value = "";
   recShowState("setup");
+});
+
+// ══════════════════════════════════════════════════════════════
+//  SHARE PANELS
+// ══════════════════════════════════════════════════════════════
+
+function setupSharePanel({ toggleId, optionsId, copyId, emailId, whatsappId, docxDlId,
+                            getSummary, getTitle, triggerDocx }) {
+  const toggle  = $(toggleId);
+  const options = $(optionsId);
+
+  toggle.addEventListener("click", () => {
+    const open = options.classList.toggle("open");
+    toggle.textContent = open ? "✖️ סגור שיתוף" : "📤 שתף סיכום";
+  });
+
+  $(copyId).addEventListener("click", async () => {
+    const text = getSummary();
+    const btn  = $(copyId);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // fallback for older mobile browsers
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); document.body.removeChild(ta);
+    }
+    const orig = btn.innerHTML;
+    btn.innerHTML = "✅ הועתק!";
+    setTimeout(() => btn.innerHTML = orig, 2000);
+  });
+
+  $(emailId).addEventListener("click", () => {
+    const subject = encodeURIComponent("סיכום: " + getTitle());
+    const body    = encodeURIComponent(getSummary().slice(0, 1800)); // mailto body limit
+    window.location.href = "mailto:?subject=" + subject + "&body=" + body;
+  });
+
+  $(whatsappId).addEventListener("click", () => {
+    const text = encodeURIComponent(getTitle() + "\n\n" + getSummary().slice(0, 1000));
+    window.open("https://wa.me/?text=" + text, "_blank");
+  });
+
+  $(docxDlId).addEventListener("click", () => triggerDocx());
+}
+
+// File summary share
+setupSharePanel({
+  toggleId: "share-toggle",   optionsId: "share-options",
+  copyId:   "share-copy",     emailId:   "share-email",
+  whatsappId: "share-whatsapp", docxDlId: "share-docx-dl",
+  getSummary: () => currentSummary,
+  getTitle:   () => currentFilename.replace(/\.[^.]+$/, ""),
+  triggerDocx: () => docxBtn.click(),
+});
+
+// Recording share
+setupSharePanel({
+  toggleId: "rec-share-toggle",   optionsId: "rec-share-options",
+  copyId:   "rec-share-copy",     emailId:   "rec-share-email",
+  whatsappId: "rec-share-whatsapp", docxDlId: "rec-share-docx-dl",
+  getSummary: () => recSummaryText,
+  getTitle:   () => recCurrentLesson,
+  triggerDocx: () => recDocxBtn.click(),
 });
 </script>
 </body>
