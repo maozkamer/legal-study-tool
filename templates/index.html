@@ -312,6 +312,27 @@
       .rec-controls { gap:6px; }
       .rec-ctrl-btn { min-width:calc(50% - 4px); font-size:.82rem; }
     }
+
+    /* ── Screen-recording button (teal) ── */
+    .rec-screen-btn { background:linear-gradient(135deg,#0d6b8a,#1a9bbf) !important;
+                      box-shadow:0 4px 18px rgba(26,155,191,.35) !important; }
+    .rec-screen-btn:hover { opacity:.88; }
+
+    /* Two-button container */
+    .rec-mode-btns { display:flex; flex-direction:column; gap:10px; }
+
+    /* Browser hint box */
+    .rec-browser-hint { margin-top:14px; padding:13px 16px; border-radius:10px;
+                        font-size:.87rem; line-height:1.7; display:none; }
+    .rec-browser-hint.chrome { background:rgba(66,133,244,.1); border:1px solid rgba(66,133,244,.35); color:#90caf9; }
+    .rec-browser-hint.safari { background:rgba(255,159,10,.1); border:1px solid rgba(255,159,10,.35); color:#ffd180; }
+    .rec-browser-hint.other  { background:rgba(255,255,255,.05); border:1px solid var(--border); color:var(--muted); }
+
+    /* Mode badge shown during active recording */
+    .rec-mode-badge { display:inline-flex; align-items:center; gap:6px; font-size:.82rem;
+                      font-weight:600; padding:3px 12px; border-radius:20px; }
+    .rec-mode-badge.mic    { background:rgba(171,71,188,.15); color:#ce93d8; border:1px solid rgba(171,71,188,.4); }
+    .rec-mode-badge.screen { background:rgba(26,155,191,.15); color:#80deea;  border:1px solid rgba(26,155,191,.4); }
   </style>
 </head>
 <body>
@@ -466,11 +487,18 @@
     </p>
     <input class="rec-name-input" id="rec-lesson-name" type="text"
            placeholder="שם השיעור / נושא (חובה)" maxlength="120" />
-    <button class="rec-big-btn" id="rec-start-btn">▶️ התחל הקלטה</button>
+    <div class="rec-mode-btns">
+      <button class="rec-big-btn" id="rec-start-btn">🎙️ הקלט שיעור (מיקרופון)</button>
+      <button class="rec-big-btn rec-screen-btn" id="rec-screen-start-btn">🖥️ הקלט שיעור מוקלט</button>
+    </div>
+    <div class="rec-browser-hint" id="rec-browser-hint"></div>
   </div>
 
   <!-- ── State 2: active recording ── -->
   <div id="rec-active" style="display:none;">
+    <div style="text-align:center;margin-bottom:6px;">
+      <span class="rec-mode-badge" id="rec-mode-badge"></span>
+    </div>
     <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:2px;">
       <div class="rec-pulse"></div>
       <span style="color:#ff7043;font-weight:600;font-size:.93rem;" id="rec-lesson-label"></span>
@@ -937,34 +965,63 @@ function highlight(html, term) {
 const recCard        = $("rec-card");
 const recSetupDiv    = $("rec-setup");
 const recLessonName  = $("rec-lesson-name");
-const recStartBtn    = $("rec-start-btn");
-const recActiveDiv   = $("rec-active");
-const recLessonLabel = $("rec-lesson-label");
-const recTimerEl     = $("rec-timer-el");
-const recTranscript  = $("rec-transcript");
-const recPauseBtn    = $("rec-pause-btn");
-const recMarkBtn     = $("rec-mark-btn");
-const recFinishBtn   = $("rec-finish-btn");
-const recProcDiv     = $("rec-processing");
-const recErrBox      = $("rec-error");
-const recDoneDiv     = $("rec-done");
-const recSubjectBadge= $("rec-subject-badge");
-const recSummaryEl   = $("rec-summary");
-const recDocxBtn     = $("rec-docx-btn");
-const recNewBtn      = $("rec-new-btn");
+const recStartBtn       = $("rec-start-btn");
+const recScreenStartBtn = $("rec-screen-start-btn");
+const recActiveDiv      = $("rec-active");
+const recLessonLabel    = $("rec-lesson-label");
+const recTimerEl        = $("rec-timer-el");
+const recTranscript     = $("rec-transcript");
+const recPauseBtn       = $("rec-pause-btn");
+const recMarkBtn        = $("rec-mark-btn");
+const recFinishBtn      = $("rec-finish-btn");
+const recProcDiv        = $("rec-processing");
+const recErrBox         = $("rec-error");
+const recDoneDiv        = $("rec-done");
+const recSubjectBadge   = $("rec-subject-badge");
+const recSummaryEl      = $("rec-summary");
+const recDocxBtn        = $("rec-docx-btn");
+const recNewBtn         = $("rec-new-btn");
+const recModeBadge      = $("rec-mode-badge");
+const recBrowserHint    = $("rec-browser-hint");
 
 // ── State ─────────────────────────────────────────────────────
 let recTimerInterval  = null;
-let recElapsed        = 0;          // seconds
+let recElapsed        = 0;
 let recPaused         = false;
 let recShouldRestart  = false;
 let recognition       = null;
-let recTranscriptFull = "";         // confirmed (final) segments
-let recTranscriptInterim = "";      // current interim
+let recTranscriptFull = "";
+let recTranscriptInterim = "";
 let recStructured     = null;
 let recSummaryText    = "";
 let recCurrentLesson  = "";
 let recSubject        = "";
+let recMode           = "mic";      // "mic" | "screen"
+let recAudioContext   = null;       // AudioContext for screen audio playback
+let recAudioStream    = null;       // getDisplayMedia stream
+
+// ── Browser detection ─────────────────────────────────────────
+const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+
+// Show browser-specific hint next to the screen recording button
+(function() {
+  if (isChrome) {
+    recBrowserHint.className = "rec-browser-hint chrome";
+    recBrowserHint.innerHTML =
+      "🖥️ <strong>Chrome:</strong> בחלון הבחירה — בחר את הטאב עם השיעור וסמן ✅ <em>Share tab audio</em><br>" +
+      "💡 השתמש ברמקולים (לא אוזניות) לתמלול מיטבי";
+  } else if (isSafari) {
+    recBrowserHint.className = "rec-browser-hint safari";
+    recBrowserHint.innerHTML =
+      "📱 <strong>Safari:</strong> הפעל את השיעור ברמקול — המיקרופון יקלוט את הקול";
+  } else {
+    recBrowserHint.className = "rec-browser-hint other";
+    recBrowserHint.innerHTML =
+      "ℹ️ לכידת אודיו מהטאב נתמכת ב-Chrome. בדפדפנים אחרים — השמע ברמקול והמיקרופון יקלוט";
+  }
+  recBrowserHint.style.display = "block";
+})();
 
 // ── Helpers ───────────────────────────────────────────────────
 function fmtHMS(secs) {
@@ -988,7 +1045,7 @@ function recShowError(msg) {
 }
 
 // ── Start recording ───────────────────────────────────────────
-recStartBtn.addEventListener("click", () => {
+function validateAndStart(mode) {
   const name = recLessonName.value.trim();
   if (!name) {
     recLessonName.classList.add("input-error");
@@ -997,24 +1054,57 @@ recStartBtn.addEventListener("click", () => {
   }
   recLessonName.classList.remove("input-error");
   recCurrentLesson = name;
+  recMode = mode;
   recBeginRecording();
-});
+}
 
+recStartBtn.addEventListener("click",       () => validateAndStart("mic"));
+recScreenStartBtn.addEventListener("click", () => validateAndStart("screen"));
 recLessonName.addEventListener("input", () => recLessonName.classList.remove("input-error"));
 
-function recBeginRecording() {
+async function recBeginRecording() {
   // Reset state
-  recElapsed        = 0;
-  recTranscriptFull = "";
+  recElapsed           = 0;
+  recTranscriptFull    = "";
   recTranscriptInterim = "";
-  recPaused         = false;
-  recStructured     = null;
-  recSummaryText    = "";
+  recPaused            = false;
+  recStructured        = null;
+  recSummaryText       = "";
+  recAudioContext      = null;
+  recAudioStream       = null;
+
+  // ── Screen mode: capture tab audio via getDisplayMedia ────────
+  if (recMode === "screen") {
+    if (isChrome) {
+      try {
+        recAudioStream = await navigator.mediaDevices.getDisplayMedia({
+          video: false,
+          audio: { echoCancellation: false, noiseSuppression: false, sampleRate: 44100 },
+        });
+        // Play captured audio to speakers so Speech Recognition (mic) can hear it
+        recAudioContext = new AudioContext();
+        const src = recAudioContext.createMediaStreamSource(recAudioStream);
+        src.connect(recAudioContext.destination);
+        // If user stops sharing from browser Chrome UI → auto-finish
+        recAudioStream.getAudioTracks()[0].addEventListener("ended", () => {
+          if (recActiveDiv.style.display !== "none") recFinishBtn.click();
+        });
+      } catch {
+        recShowError("בחירת הטאב בוטלה — נסה שוב.");
+        return;
+      }
+    }
+    // Safari + others: fallback to microphone (hint already shown to user)
+  }
 
   recShowState("active");
   recLessonLabel.textContent = recCurrentLesson;
-  recTimerEl.textContent = "00:00:00";
-  recTranscript.value = "";
+  recTimerEl.textContent     = "00:00:00";
+  recTranscript.value        = "";
+
+  // Mode badge
+  recModeBadge.textContent = recMode === "screen" ? "🖥️ שיעור מוקלט" : "🎙️ מיקרופון";
+  recModeBadge.className   = "rec-mode-badge " + recMode;
 
   // Timer
   recTimerInterval = setInterval(() => {
@@ -1034,19 +1124,16 @@ function recBeginRecording() {
   }
 
   recognition = new SpeechRec();
-  recognition.lang            = "he-IL";
-  recognition.continuous      = true;
-  recognition.interimResults  = true;
+  recognition.lang           = "he-IL";
+  recognition.continuous     = true;
+  recognition.interimResults = true;
 
   recognition.onresult = (e) => {
     let interim = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) {
-        recTranscriptFull += t + " ";
-      } else {
-        interim += t;
-      }
+      if (e.results[i].isFinal) recTranscriptFull += t + " ";
+      else interim += t;
     }
     recTranscriptInterim = interim;
     recTranscript.value  = recTranscriptFull + interim;
@@ -1054,16 +1141,12 @@ function recBeginRecording() {
   };
 
   recognition.onerror = (e) => {
-    if (e.error !== "aborted" && e.error !== "no-speech") {
+    if (e.error !== "aborted" && e.error !== "no-speech")
       recShowError("שגיאה בזיהוי דיבור: " + e.error);
-    }
   };
 
-  // Auto-restart to maintain continuous recognition
   recognition.onend = () => {
-    if (recShouldRestart) {
-      try { recognition.start(); } catch (_) {}
-    }
+    if (recShouldRestart) { try { recognition.start(); } catch (_) {} }
   };
 
   recShouldRestart = true;
@@ -1076,11 +1159,13 @@ recPauseBtn.addEventListener("click", () => {
   if (recPaused) {
     recShouldRestart = false;
     recognition.stop();
+    if (recAudioContext) recAudioContext.suspend();
     recPauseBtn.textContent = "▶️ המשך";
     recPauseBtn.style.borderColor = "var(--green)";
     recPauseBtn.style.color = "#6fcf97";
   } else {
     recShouldRestart = true;
+    if (recAudioContext) recAudioContext.resume();
     try { recognition.start(); } catch (_) {}
     recPauseBtn.textContent = "⏸️ השהה";
     recPauseBtn.style.borderColor = "";
@@ -1104,6 +1189,9 @@ recFinishBtn.addEventListener("click", async () => {
   clearInterval(recTimerInterval); recTimerInterval = null;
   recShouldRestart = false;
   if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
+  // Release screen audio stream
+  if (recAudioStream) { recAudioStream.getTracks().forEach(t => t.stop()); recAudioStream = null; }
+  if (recAudioContext) { recAudioContext.close(); recAudioContext = null; }
 
   const finalTranscript = (recTranscriptFull + recTranscriptInterim).trim();
   if (!finalTranscript) {
@@ -1189,6 +1277,7 @@ recDocxBtn.addEventListener("click", async () => {
 // ── New recording ─────────────────────────────────────────────
 recNewBtn.addEventListener("click", () => {
   recLessonName.value = "";
+  recMode = "mic";
   recShowState("setup");
 });
 
