@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>עוזר הלימודים המשפטי</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -209,6 +211,47 @@
 
     footer { margin-top:40px; color:#3a5a78; font-size:.82rem; text-align:center; }
 
+    /* ── Concept map panel ── */
+    #map-panel { display:none; width:100%; max-width:680px; margin-top:28px; }
+    .map-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+    .map-header h2 { font-size:1.2rem; font-weight:700; }
+
+    .map-legend { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    .legend-item { display:inline-flex; align-items:center; gap:6px;
+                   padding:4px 12px; border-radius:20px; font-size:.82rem; font-weight:600; }
+    .legend-verdict   { background:rgba(42,121,213,.18); border:1px solid #2a79d5; color:#90c3f5; }
+    .legend-law       { background:rgba(39,174,96,.15);  border:1px solid #27ae60; color:#6fcf97; }
+    .legend-principle { background:rgba(243,156,18,.15); border:1px solid #f39c12; color:#f5c842; }
+    .legend-concept   { background:rgba(142,68,173,.18); border:1px solid #8e44ad; color:#ce93d8; }
+
+    #map-network { height:480px; border:1px solid var(--border); border-radius:12px;
+                   background:rgba(0,0,0,.25); overflow:hidden; position:relative; }
+    @media (max-width:480px) { #map-network { height:340px; } }
+
+    /* vis.js override for dark theme */
+    #map-network .vis-network { border-radius:12px; }
+    .vis-tooltip { background:var(--card) !important; border:1px solid var(--border) !important;
+                   color:var(--text) !important; border-radius:8px !important;
+                   padding:6px 10px !important; font-family:"Segoe UI",Arial,sans-serif !important; }
+
+    .map-node-detail { background:var(--bg); border:1px solid var(--border);
+                       border-radius:10px; padding:14px 16px; margin-top:12px;
+                       display:none; font-size:.93rem; }
+    .map-node-type  { font-size:.82rem; color:var(--muted); margin-bottom:4px; }
+    .map-node-name  { font-size:1.05rem; font-weight:700; color:#7ec8e3; margin-bottom:8px; }
+    .map-node-rels  { margin:0; padding-right:16px; }
+    .map-node-rels li { color:var(--muted); font-size:.88rem; line-height:1.8; }
+    .map-node-rels li strong { color:var(--text); }
+
+    .map-saved-section { margin-top:20px; }
+    .map-saved-section h3 { font-size:.97rem; font-weight:700; color:var(--muted);
+                             margin-bottom:12px; }
+    .map-saved-item { display:flex; align-items:center; justify-content:space-between;
+                      gap:10px; background:var(--bg); border:1px solid var(--border);
+                      border-radius:10px; padding:12px 14px; margin-bottom:8px; }
+    .map-saved-name { font-size:.93rem; font-weight:600; }
+    .map-saved-date { font-size:.8rem; color:var(--muted); margin-top:2px; }
+
     /* ── Share panel ── */
     .share-panel { margin-top:16px; }
     .share-options { display:none; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
@@ -340,7 +383,10 @@
 <!-- Top nav -->
 <nav>
   <div class="brand">⚖️ <span>עוזר הלימודים המשפטי</span></div>
-  <button class="nav-btn" id="history-toggle-btn">📊 היסטוריה</button>
+  <div style="display:flex;gap:8px;">
+    <button class="nav-btn" id="map-nav-btn">🗺️ מפת קשרים</button>
+    <button class="nav-btn" id="history-toggle-btn">📊 היסטוריה</button>
+  </div>
 </nav>
 
 <!-- History panel -->
@@ -411,6 +457,9 @@
     <div class="actions-row">
       <button class="btn btn-outline" id="questions-btn">📝 שאלות לבחינה</button>
       <button class="btn btn-outline" id="flashcards-btn">🃏 כרטיסיות חזרה</button>
+    </div>
+    <div class="actions-row" style="margin-top:10px;">
+      <button class="btn btn-outline" id="map-from-doc-btn">🗺️ מפת קשרים</button>
     </div>
 
     <!-- Timer setup (shown before quiz starts) -->
@@ -542,6 +591,58 @@
     </div>
 
     <button class="btn btn-ghost" id="rec-new-btn">🎙️ הקלט שיעור חדש</button>
+  </div>
+</div>
+
+<!-- ══ Concept Map panel ══════════════════════════════════════ -->
+<div id="map-panel">
+  <div class="card">
+    <div class="map-header">
+      <h2>🗺️ מפת קשרים</h2>
+      <button class="nav-btn" id="map-close-btn">✖️ סגור</button>
+    </div>
+
+    <!-- Upload section -->
+    <div id="map-upload-section">
+      <div class="upload-zone" id="map-drop-zone">
+        <input type="file" id="map-file-input" accept=".pdf,.pptx,.docx,.txt" />
+        <div class="upload-icon">🗺️</div>
+        <div class="upload-title">העלה מסמך ליצירת מפת קשרים</div>
+        <div class="upload-sub">PDF, PPTX, DOCX, TXT · עד 50MB</div>
+      </div>
+      <div id="map-file-label" style="margin-top:10px;font-size:.9rem;color:var(--lt);min-height:20px;"></div>
+      <button class="btn btn-primary" id="map-upload-btn" disabled>🗺️ צור מפת קשרים</button>
+    </div>
+
+    <!-- Spinner -->
+    <div class="spinner-wrap" id="map-spinner">
+      <div class="spinner"></div>
+      <div class="spinner-text">Claude מנתח קשרים במסמך...</div>
+    </div>
+
+    <!-- Error -->
+    <div class="error-box" id="map-error"></div>
+
+    <!-- Map display -->
+    <div id="map-display" style="display:none;margin-top:20px;">
+      <div class="map-legend">
+        <span class="legend-item legend-verdict">⚖️ פסק דין</span>
+        <span class="legend-item legend-law">📜 חוק</span>
+        <span class="legend-item legend-principle">💡 עיקרון</span>
+        <span class="legend-item legend-concept">🔷 מושג</span>
+      </div>
+      <div id="map-network"></div>
+      <div class="map-node-detail" id="map-node-detail"></div>
+      <div style="margin-top:12px;">
+        <button class="btn btn-outline" id="map-download-btn">📥 הורד מפה כתמונה</button>
+      </div>
+    </div>
+
+    <!-- Saved maps -->
+    <div class="map-saved-section" id="map-saved-section" style="display:none;">
+      <h3>📂 מפות שמורות</h3>
+      <div id="map-saved-list"></div>
+    </div>
   </div>
 </div>
 
@@ -1345,6 +1446,223 @@ setupSharePanel({
   getTitle:   () => recCurrentLesson,
   triggerDocx: () => recDocxBtn.click(),
 });
+
+// ══════════════════════════════════════════════════════════════
+//  CONCEPT MAP
+// ══════════════════════════════════════════════════════════════
+
+// ── DOM refs ──────────────────────────────────────────────────
+const mapNavBtn       = $("map-nav-btn");
+const mapCloseBtn     = $("map-close-btn");
+const mapPanelEl      = $("map-panel");
+const mapDropZone     = $("map-drop-zone");
+const mapFileInput    = $("map-file-input");
+const mapFileLabelEl  = $("map-file-label");
+const mapUploadBtn    = $("map-upload-btn");
+const mapSpinnerEl    = $("map-spinner");
+const mapErrorEl      = $("map-error");
+const mapDisplayEl    = $("map-display");
+const mapNetworkEl    = $("map-network");
+const mapNodeDetail   = $("map-node-detail");
+const mapDownloadBtn  = $("map-download-btn");
+const mapFromDocBtn   = $("map-from-doc-btn");
+const mapSavedSection = $("map-saved-section");
+const mapSavedListEl  = $("map-saved-list");
+
+// ── State ─────────────────────────────────────────────────────
+let mapNetwork      = null;
+let mapSelFile      = null;
+let currentMapData  = null;
+
+// ── Node colors by type ───────────────────────────────────────
+const MAP_COLORS = {
+  verdict:   { background:"#122a4a", border:"#2a79d5", highlight:{ background:"#1a3e6a", border:"#4a90d9" } },
+  law:       { background:"#0d2d1a", border:"#27ae60", highlight:{ background:"#123a22", border:"#2ecc71" } },
+  principle: { background:"#3a2200", border:"#f39c12", highlight:{ background:"#4e2e00", border:"#f5b942" } },
+  concept:   { background:"#2a1040", border:"#8e44ad", highlight:{ background:"#381555", border:"#a355c4" } },
+};
+
+// ── Panel toggle ──────────────────────────────────────────────
+function openMapPanel() {
+  mapPanelEl.style.display = "block";
+  renderSavedMaps();
+  mapPanelEl.scrollIntoView({ behavior:"smooth" });
+}
+mapNavBtn.addEventListener("click",   () => {
+  mapPanelEl.style.display === "block" ? (mapPanelEl.style.display = "none") : openMapPanel();
+});
+mapCloseBtn.addEventListener("click", () => { mapPanelEl.style.display = "none"; });
+
+// ── File handling ─────────────────────────────────────────────
+function setMapFile(file) {
+  if (!file) return;
+  const ext = file.name.split(".").pop().toLowerCase();
+  if (!["pdf","pptx","docx","txt"].includes(ext)) { showMapError("סוג קובץ לא נתמך"); return; }
+  mapSelFile = file;
+  mapFileLabelEl.textContent = "📄 " + file.name;
+  mapUploadBtn.disabled = false;
+}
+mapFileInput.addEventListener("change", () => setMapFile(mapFileInput.files[0]));
+mapDropZone.addEventListener("dragover",  e => { e.preventDefault(); mapDropZone.classList.add("drag-over"); });
+mapDropZone.addEventListener("dragleave", () => mapDropZone.classList.remove("drag-over"));
+mapDropZone.addEventListener("drop", e => {
+  e.preventDefault(); mapDropZone.classList.remove("drag-over"); setMapFile(e.dataTransfer.files[0]);
+});
+
+// ── Upload → generate ─────────────────────────────────────────
+mapUploadBtn.addEventListener("click", async () => {
+  if (!mapSelFile) return;
+  mapUploadBtn.disabled = true;
+  mapSpinnerEl.classList.add("visible");
+  mapDisplayEl.style.display = "none";
+  hideMapError();
+  const form = new FormData();
+  form.append("file", mapSelFile);
+  try {
+    const r = await fetch("/upload", { method:"POST", body:form });
+    const d = await r.json();
+    if (!r.ok || d.error) { showMapError(d.error || "שגיאה בטעינת הקובץ"); return; }
+    await generateMap(d.token, mapSelFile.name);
+  } catch { showMapError("שגיאת רשת — נסה שוב"); }
+  finally  { mapSpinnerEl.classList.remove("visible"); mapUploadBtn.disabled = false; }
+});
+
+// ── From existing doc ─────────────────────────────────────────
+mapFromDocBtn.addEventListener("click", async () => {
+  if (!docToken) return;
+  openMapPanel();
+  mapSpinnerEl.classList.add("visible");
+  mapDisplayEl.style.display = "none";
+  hideMapError();
+  await generateMap(docToken, currentFilename);
+  mapSpinnerEl.classList.remove("visible");
+});
+
+// ── Core: call /concept-map and render ────────────────────────
+async function generateMap(token, filename) {
+  try {
+    const r = await fetch("/concept-map", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ token }),
+    });
+    const data = await r.json();
+    if (!r.ok || data.error) { showMapError(data.error || "שגיאה בניתוח"); return; }
+    currentMapData = data;
+    renderMap(data);
+    saveMapEntry({ filename, date: new Date().toLocaleString("he-IL"),
+                   nodes: data.nodes, edges: data.edges });
+    renderSavedMaps();
+    mapDisplayEl.style.display = "block";
+    mapNetworkEl.scrollIntoView({ behavior:"smooth" });
+  } catch { showMapError("שגיאת רשת — נסה שוב"); }
+}
+
+// ── Render vis.js network ─────────────────────────────────────
+function renderMap(data) {
+  if (mapNetwork) { mapNetwork.destroy(); mapNetwork = null; }
+  mapNodeDetail.style.display = "none";
+
+  const nodes = new vis.DataSet(data.nodes.map(n => ({
+    id:    n.id,
+    label: n.label,
+    title: n.label,
+    color: MAP_COLORS[n.type] || MAP_COLORS.concept,
+    font:  { color:"#e8edf2", size:13, face:"Segoe UI, Arial" },
+    shape: "box",
+    margin: 10,
+    borderWidth: 2,
+    borderWidthSelected: 3,
+  })));
+
+  const edges = new vis.DataSet(data.edges.map((e, i) => ({
+    id:     i,
+    from:   e.from,
+    to:     e.to,
+    label:  e.label || "",
+    arrows: "to",
+    color:  { color:"#2a5298", highlight:"#4a90d9", opacity:0.85 },
+    font:   { color:"#8fa8c0", size:11, face:"Segoe UI, Arial", align:"middle" },
+    smooth: { type:"curvedCW", roundness:0.2 },
+  })));
+
+  mapNetwork = new vis.Network(mapNetworkEl, { nodes, edges }, {
+    physics: {
+      enabled: true,
+      stabilization: { iterations: 150 },
+      barnesHut: { gravitationalConstant:-3500, centralGravity:0.3, springLength:140 },
+    },
+    interaction: { hover:true, zoomView:true, dragNodes:true, dragView:true },
+    layout:      { randomSeed:42 },
+  });
+
+  // Click on node → show details
+  const typeLabels = { verdict:"⚖️ פסק דין", law:"📜 חוק", principle:"💡 עיקרון", concept:"🔷 מושג" };
+  mapNetwork.on("click", params => {
+    if (!params.nodes.length) { mapNodeDetail.style.display = "none"; return; }
+    const nodeId = params.nodes[0];
+    const node   = data.nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    const rels = data.edges.filter(e => e.from === nodeId || e.to === nodeId);
+    const relsHtml = rels.map(e => {
+      const otherId = e.from === nodeId ? e.to : e.from;
+      const other   = data.nodes.find(n => n.id === otherId);
+      const arrow   = e.from === nodeId ? "→" : "←";
+      return `<li>${arrow} <strong>${escHtml(e.label || "")}</strong>: ${escHtml(other?.label || "")} </li>`;
+    }).join("");
+    mapNodeDetail.innerHTML = `
+      <div class="map-node-type">${typeLabels[node.type] || "🔷 מושג"}</div>
+      <div class="map-node-name">${escHtml(node.label)}</div>
+      ${rels.length ? `<ul class="map-node-rels">${relsHtml}</ul>` : ""}`;
+    mapNodeDetail.style.display = "block";
+  });
+}
+
+// ── Download map as PNG ───────────────────────────────────────
+mapDownloadBtn.addEventListener("click", () => {
+  const canvas = mapNetworkEl.querySelector("canvas");
+  if (!canvas) return;
+  const a = document.createElement("a");
+  a.href     = canvas.toDataURL("image/png");
+  a.download = "concept-map.png";
+  a.click();
+});
+
+// ── LocalStorage helpers ──────────────────────────────────────
+function saveMapEntry(entry) {
+  const maps = getMapHistory();
+  const idx  = maps.findIndex(m => m.filename === entry.filename);
+  if (idx >= 0) maps[idx] = entry; else maps.unshift(entry);
+  localStorage.setItem("legal_maps", JSON.stringify(maps.slice(0, 20)));
+}
+function getMapHistory() {
+  try { return JSON.parse(localStorage.getItem("legal_maps") || "[]"); } catch { return []; }
+}
+function renderSavedMaps() {
+  const maps = getMapHistory();
+  if (!maps.length) { mapSavedSection.style.display = "none"; return; }
+  mapSavedSection.style.display = "block";
+  mapSavedListEl.innerHTML = maps.map((m, i) => `
+    <div class="map-saved-item">
+      <div>
+        <div class="map-saved-name">🗺️ ${escHtml(m.filename || "")}</div>
+        <div class="map-saved-date">${escHtml(m.date || "")}</div>
+      </div>
+      <button class="history-btn view" data-i="${i}">📂 טען</button>
+    </div>`).join("");
+  mapSavedListEl.querySelectorAll(".history-btn.view").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const m = maps[parseInt(btn.dataset.i)];
+      currentMapData = m;
+      renderMap(m);
+      mapDisplayEl.style.display = "block";
+      mapNetworkEl.scrollIntoView({ behavior:"smooth" });
+    });
+  });
+}
+
+// ── Error helpers ─────────────────────────────────────────────
+function showMapError(msg) { mapErrorEl.textContent = "❌ " + msg; mapErrorEl.style.display = "block"; }
+function hideMapError()    { mapErrorEl.style.display = "none"; }
 </script>
 </body>
 </html>

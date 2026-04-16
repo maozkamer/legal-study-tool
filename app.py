@@ -549,6 +549,47 @@ def export_lecture_docx():
     )
 
 
+@app.route("/concept-map", methods=["POST"])
+def concept_map():
+    token = (request.json or {}).get("token", "")
+    text  = _TEXT_CACHE.get(token)
+    if not text:
+        return jsonify({"error": "הסשן פג תוקף — אנא העלה את הקובץ מחדש"}), 400
+
+    prompt = (
+        "אתה עוזר לימודים משפטי. נתח את המסמך הבא וזהה:\n"
+        "- פסקי דין שהוזכרו (type: verdict)\n"
+        "- חוקים וסעיפים (type: law)\n"
+        "- עקרונות משפטיים (type: principle)\n"
+        "- מושגים משפטיים חשובים (type: concept)\n"
+        "- קשרים בין האלמנטים הללו\n\n"
+        "החזר JSON בלבד — ללא markdown, ללא טקסט לפני או אחרי הסוגריים:\n"
+        '{\n'
+        '  "nodes": [\n'
+        '    {"id":"1","label":"שם קצר (עד 35 תווים)","type":"verdict|law|principle|concept"}\n'
+        '  ],\n'
+        '  "edges": [\n'
+        '    {"from":"1","to":"2","label":"קשר קצר (עד 20 תווים)"}\n'
+        '  ]\n'
+        '}\n\n'
+        "כלול 6–15 צמתים ו-5–15 קשרים. אם אין פסקי דין — השמט. label לכל צומת חובה.\n\n"
+        "המסמך:\n" + text[:9000]
+    )
+
+    try:
+        raw  = _claude(prompt, max_tokens=2048)
+        js   = raw[raw.find("{") : raw.rfind("}") + 1]
+        data = json.loads(js)
+        # Basic validation
+        if not data.get("nodes"):
+            return jsonify({"error": "לא זוהו אלמנטים משפטיים במסמך"}), 400
+    except (json.JSONDecodeError, ValueError) as exc:
+        log.error("Concept-map JSON error: %s", exc)
+        return jsonify({"error": "שגיאה בניתוח המסמך — נסה שוב"}), 500
+
+    return jsonify(data)
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
