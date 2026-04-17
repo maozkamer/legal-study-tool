@@ -339,6 +339,8 @@
     .rec-mark:hover:not(:disabled)   { background:rgba(243,156,18,.22); }
     .rec-finish { background:rgba(231,76,60,.12); color:#f5a0a8; border-color:var(--red); }
     .rec-finish:hover:not(:disabled) { background:rgba(231,76,60,.24); }
+    .rec-cancel { background:rgba(180,0,0,.18); color:#ff6b6b; border-color:#c0392b; font-weight:700; }
+    .rec-cancel:hover:not(:disabled) { background:rgba(180,0,0,.35); }
 
     /* Subject badge */
     .subject-badge { display:inline-flex; align-items:center; gap:6px;
@@ -559,6 +561,7 @@
       <button class="rec-ctrl-btn rec-pause"  id="rec-pause-btn">⏸️ השהה</button>
       <button class="rec-ctrl-btn rec-mark"   id="rec-mark-btn">⭐ סמן רגע חשוב</button>
       <button class="rec-ctrl-btn rec-finish" id="rec-finish-btn">⏹️ סיים וסכם</button>
+      <button class="rec-ctrl-btn rec-cancel" id="rec-cancel-btn">❌ בטל הקלטה</button>
     </div>
   </div>
 
@@ -1075,6 +1078,7 @@ const recTranscript     = $("rec-transcript");
 const recPauseBtn       = $("rec-pause-btn");
 const recMarkBtn        = $("rec-mark-btn");
 const recFinishBtn      = $("rec-finish-btn");
+const recCancelBtn      = $("rec-cancel-btn");
 const recProcDiv        = $("rec-processing");
 const recErrBox         = $("rec-error");
 const recDoneDiv        = $("rec-done");
@@ -1347,6 +1351,29 @@ recFinishBtn.addEventListener("click", async () => {
     recShowState("active");
     recShowError("שגיאת רשת — נסה שוב");
   }
+});
+
+// ── Cancel recording ─────────────────────────────────────────
+recCancelBtn.addEventListener("click", () => {
+  if (!confirm("האם אתה בטוח? ההקלטה תימחק ולא תישמר.")) return;
+
+  // Stop everything
+  clearInterval(recTimerInterval); recTimerInterval = null;
+  recShouldRestart = false;
+  if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
+  if (recAudioStream) { recAudioStream.getTracks().forEach(t => t.stop()); recAudioStream = null; }
+  if (recAudioContext) { recAudioContext.close(); recAudioContext = null; }
+
+  // Clear all transcript data
+  recTranscriptFull    = "";
+  recTranscriptInterim = "";
+  recTranscript.value  = "";
+  recElapsed           = 0;
+  recMarkedMoments     = [];
+  recTimerEl.textContent = "00:00:00";
+
+  // Go back to setup screen (home)
+  recShowState("setup");
 });
 
 // ── Download Word ─────────────────────────────────────────────
