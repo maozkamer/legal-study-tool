@@ -1183,16 +1183,24 @@ async function recBeginRecording() {
   if (recMode === "screen") {
     if (isChrome) {
       try {
-        recAudioStream = await navigator.mediaDevices.getDisplayMedia({
+        // שלב 1 — בחירת טאב (המשתמש בוחר חלון/טאב בחלונית Chrome)
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
           video: false,
           audio: true,
         });
-        recMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-        recAudioContext = new AudioContext();
-        const dest = recAudioContext.createMediaStreamDestination();
-        recAudioContext.createMediaStreamSource(recAudioStream).connect(dest);
-        recAudioContext.createMediaStreamSource(recMicStream).connect(dest);
+        // שלב 2 — מיקרופון (רק אחרי שהטאב נבחר בהצלחה)
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // שלב 3 — שילוב שני ה-streams ב-AudioContext אחד
+        const audioContext = new AudioContext();
+        const dest = audioContext.createMediaStreamDestination();
+        audioContext.createMediaStreamSource(displayStream).connect(dest);
+        audioContext.createMediaStreamSource(micStream).connect(dest);
+
+        recAudioStream  = displayStream;
+        recMicStream    = micStream;
+        recAudioContext = audioContext;
 
         // Replace the default mic recognition with the combined stream
         const SpeechRecCombined = window.SpeechRecognition || window.webkitSpeechRecognition;
