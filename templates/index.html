@@ -1102,8 +1102,9 @@ let recSummaryText    = "";
 let recCurrentLesson  = "";
 let recSubject        = "";
 let recMode           = "mic";      // "mic" | "screen"
-let recAudioContext   = null;       // AudioContext for screen audio playback
+let recAudioContext   = null;       // AudioContext for combined stream mixing
 let recAudioStream    = null;       // getDisplayMedia stream
+let recMicStream      = null;       // getUserMedia stream (screen mode only)
 
 // ── Browser detection ─────────────────────────────────────────
 const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
@@ -1178,28 +1179,72 @@ async function recBeginRecording() {
   recAudioContext      = null;
   recAudioStream       = null;
 
-  // ── Screen mode: capture tab audio via getDisplayMedia ────────
+  // ── Screen mode: combine tab audio + mic into one stream ────────
   if (recMode === "screen") {
     if (isChrome) {
       try {
         recAudioStream = await navigator.mediaDevices.getDisplayMedia({
           video: false,
-          audio: { echoCancellation: false, noiseSuppression: false, sampleRate: 44100 },
+          audio: true,
         });
-        // Play captured audio to speakers so Speech Recognition (mic) can hear it
+        recMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
         recAudioContext = new AudioContext();
-        const src = recAudioContext.createMediaStreamSource(recAudioStream);
-        src.connect(recAudioContext.destination);
-        // If user stops sharing from browser Chrome UI → auto-finish
+        const dest = recAudioContext.createMediaStreamDestination();
+        recAudioContext.createMediaStreamSource(recAudioStream).connect(dest);
+        recAudioContext.createMediaStreamSource(recMicStream).connect(dest);
+
+        // Replace the default mic recognition with the combined stream
+        const SpeechRecCombined = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecCombined) throw new Error("no-speech-api");
+        recognition = new SpeechRecCombined();
+        recognition.lang           = "he-IL";
+        recognition.continuous     = true;
+        recognition.interimResults = true;
+
+        // Attach the combined audio track so Chrome uses it instead of the default mic
+        if (recognition.stream !== undefined) {
+          recognition.stream = dest.stream;
+        }
+
+        recognition.onresult = (e) => {
+          let interim = "";
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            const t = e.results[i][0].transcript;
+            if (e.results[i].isFinal) recTranscriptFull += t + " ";
+            else interim += t;
+          }
+          recTranscriptInterim = interim;
+          recTranscript.value  = recTranscriptFull + interim;
+          recTranscript.scrollTop = recTranscript.scrollHeight;
+        };
+
+        recognition.onerror = (e) => {
+          if (e.error !== "aborted" && e.error !== "no-speech")
+            recShowError("שגיאה בזיהוי דיבור: " + e.error);
+        };
+
+        recognition.onend = () => {
+          if (recShouldRestart) { try { recognition.start(); } catch (_) {} }
+        };
+
+        // Auto-finish if user stops sharing from Chrome's own UI
         recAudioStream.getAudioTracks()[0].addEventListener("ended", () => {
           if (recActiveDiv.style.display !== "none") recFinishBtn.click();
         });
-      } catch {
-        recShowError("בחירת הטאב בוטלה — נסה שוב.");
+
+        recShouldRestart = true;
+        recognition.start();
+
+      } catch (err) {
+        if (recAudioStream)  { recAudioStream.getTracks().forEach(t => t.stop());  recAudioStream  = null; }
+        if (recMicStream)    { recMicStream.getTracks().forEach(t => t.stop());    recMicStream    = null; }
+        if (recAudioContext) { recAudioContext.close(); recAudioContext = null; }
+        recShowError("בחירת הטאב בוטלה או הרשאת מיקרופון נדחתה — נסה שוב.");
         return;
       }
     }
-    // Safari + others: fallback to microphone (hint already shown to user)
+    // Safari + others: fallback to regular mic (hint already shown to user)
   }
 
   recShowState("active");
@@ -1220,42 +1265,45 @@ async function recBeginRecording() {
   }, 1000);
 
   // Speech Recognition
-  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRec) {
-    clearInterval(recTimerInterval);
-    recShowState("setup");
-    recShowError("הדפדפן שלך לא תומך בזיהוי דיבור — השתמש ב-Chrome.");
-    return;
-  }
-
-  recognition = new SpeechRec();
-  recognition.lang           = "he-IL";
-  recognition.continuous     = true;
-  recognition.interimResults = true;
-
-  recognition.onresult = (e) => {
-    let interim = "";
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) recTranscriptFull += t + " ";
-      else interim += t;
+  // ── Mic mode (or Safari screen fallback): start regular recognition ──
+  if (!(recMode === "screen" && isChrome)) {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      clearInterval(recTimerInterval);
+      recShowState("setup");
+      recShowError("הדפדפן שלך לא תומך בזיהוי דיבור — השתמש ב-Chrome.");
+      return;
     }
-    recTranscriptInterim = interim;
-    recTranscript.value  = recTranscriptFull + interim;
-    recTranscript.scrollTop = recTranscript.scrollHeight;
-  };
 
-  recognition.onerror = (e) => {
-    if (e.error !== "aborted" && e.error !== "no-speech")
-      recShowError("שגיאה בזיהוי דיבור: " + e.error);
-  };
+    recognition = new SpeechRec();
+    recognition.lang           = "he-IL";
+    recognition.continuous     = true;
+    recognition.interimResults = true;
 
-  recognition.onend = () => {
-    if (recShouldRestart) { try { recognition.start(); } catch (_) {} }
-  };
+    recognition.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) recTranscriptFull += t + " ";
+        else interim += t;
+      }
+      recTranscriptInterim = interim;
+      recTranscript.value  = recTranscriptFull + interim;
+      recTranscript.scrollTop = recTranscript.scrollHeight;
+    };
 
-  recShouldRestart = true;
-  recognition.start();
+    recognition.onerror = (e) => {
+      if (e.error !== "aborted" && e.error !== "no-speech")
+        recShowError("שגיאה בזיהוי דיבור: " + e.error);
+    };
+
+    recognition.onend = () => {
+      if (recShouldRestart) { try { recognition.start(); } catch (_) {} }
+    };
+
+    recShouldRestart = true;
+    recognition.start();
+  }
 }
 
 // ── Pause / Resume ────────────────────────────────────────────
@@ -1294,8 +1342,9 @@ recFinishBtn.addEventListener("click", async () => {
   clearInterval(recTimerInterval); recTimerInterval = null;
   recShouldRestart = false;
   if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
-  // Release screen audio stream
+  // Release screen audio streams
   if (recAudioStream) { recAudioStream.getTracks().forEach(t => t.stop()); recAudioStream = null; }
+  if (recMicStream)   { recMicStream.getTracks().forEach(t => t.stop());   recMicStream   = null; }
   if (recAudioContext) { recAudioContext.close(); recAudioContext = null; }
 
   const finalTranscript = (recTranscriptFull + recTranscriptInterim).trim();
@@ -1362,6 +1411,7 @@ recCancelBtn.addEventListener("click", () => {
   recShouldRestart = false;
   if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
   if (recAudioStream) { recAudioStream.getTracks().forEach(t => t.stop()); recAudioStream = null; }
+  if (recMicStream)   { recMicStream.getTracks().forEach(t => t.stop());   recMicStream   = null; }
   if (recAudioContext) { recAudioContext.close(); recAudioContext = null; }
 
   // Clear all transcript data
