@@ -1228,12 +1228,19 @@ async function recBeginRecording() {
         };
 
         recognition.onerror = (e) => {
-          if (e.error !== "aborted" && e.error !== "no-speech")
-            recShowError("שגיאה בזיהוי דיבור: " + e.error);
+          if (e.error === "no-speech" || e.error === "aborted") {
+            if (recShouldRestart && !recPaused) {
+              setTimeout(() => { try { recognition.start(); } catch (_) {} }, 100);
+            }
+            return;
+          }
+          recShowError("שגיאה בזיהוי דיבור: " + e.error);
         };
 
         recognition.onend = () => {
-          if (recShouldRestart) { try { recognition.start(); } catch (_) {} }
+          if (recShouldRestart && !recPaused) {
+            setTimeout(() => { try { recognition.start(); } catch (_) {} }, 100);
+          }
         };
 
         // Auto-finish if user stops sharing from Chrome's own UI
@@ -1301,12 +1308,19 @@ async function recBeginRecording() {
     };
 
     recognition.onerror = (e) => {
-      if (e.error !== "aborted" && e.error !== "no-speech")
-        recShowError("שגיאה בזיהוי דיבור: " + e.error);
+      if (e.error === "no-speech" || e.error === "aborted") {
+        if (recShouldRestart && !recPaused) {
+          setTimeout(() => { try { recognition.start(); } catch (_) {} }, 100);
+        }
+        return;
+      }
+      recShowError("שגיאה בזיהוי דיבור: " + e.error);
     };
 
     recognition.onend = () => {
-      if (recShouldRestart) { try { recognition.start(); } catch (_) {} }
+      if (recShouldRestart && !recPaused) {
+        setTimeout(() => { try { recognition.start(); } catch (_) {} }, 100);
+      }
     };
 
     recShouldRestart = true;
