@@ -4,7 +4,7 @@ import uuid
 import json
 import logging
 from datetime import date, datetime
-from flask import Flask, request, render_template, jsonify, send_file
+from flask import Flask, request, render_template, jsonify, send_file, send_from_directory
 import PyPDF2
 from pptx import Presentation
 from docx import Document
@@ -154,6 +154,26 @@ def _claude(prompt: str, max_tokens: int = 2048) -> str:
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/manifest.json")
+def manifest():
+    return send_from_directory("static", "manifest.json")
+
+
+@app.route("/sw.js")
+def service_worker():
+    return send_from_directory("static", "sw.js", mimetype="application/javascript")
+
+
+@app.route("/icon-192.svg")
+def icon_192():
+    return send_from_directory("static", "icon-192.svg", mimetype="image/svg+xml")
+
+
+@app.route("/icon-512.svg")
+def icon_512():
+    return send_from_directory("static", "icon-512.svg", mimetype="image/svg+xml")
 
 
 @app.route("/upload", methods=["POST"])
