@@ -203,8 +203,22 @@ def upload():
     if not text.strip():
         return jsonify({"error": "לא ניתן לחלץ טקסט מהקובץ"}), 400
 
-    doc_type = detect_type(text)
-    prompt   = PROMPTS[doc_type] + text[:12000]
+    doc_type     = detect_type(text)
+    summary_type = request.form.get("summary_type", "full")
+
+    if summary_type == "short":
+        prompt = (
+            "אתה עוזר לימודים משפטי. סכם את המסמך הבא ב-5–7 נקודות עיקריות בלבד. "
+            "קצר, ממוקד, ללא פירוט מיותר. השתמש בפורמט:\n\n"
+            "⚡ **סיכום מקוצר**\n\n"
+            "1. [נקודה ראשונה]\n"
+            "2. [נקודה שנייה]\n"
+            "...\n\n"
+            "📌 **מסקנה עיקרית:** [משפט אחד]\n\n"
+            "המסמך:\n" + text[:12000]
+        )
+    else:
+        prompt = PROMPTS[doc_type] + text[:12000]
 
     try:
         summary = _claude(prompt)
@@ -336,16 +350,37 @@ def export_docx():
 
 @app.route("/summarize-lecture", methods=["POST"])
 def summarize_lecture():
-    data        = request.json or {}
-    lesson_name = data.get("lesson_name", "שיעור")
-    transcript  = data.get("transcript", "").strip()
-    duration    = data.get("duration", "")
+    data         = request.json or {}
+    lesson_name  = data.get("lesson_name", "שיעור")
+    transcript   = data.get("transcript", "").strip()
+    duration     = data.get("duration", "")
+    summary_type = data.get("summary_type", "full")
 
     if not transcript:
         return jsonify({"error": "התמלול ריק — ודא שהמיקרופון פעל"}), 400
 
     today    = date.today().strftime("%d/%m/%Y")
     now_time = datetime.now().strftime("%H:%M")
+
+    if summary_type == "short":
+        prompt = (
+            f'אתה עוזר לימודים משפטי. קיבלת תמליל של שיעור בשם: "{lesson_name}"\n'
+            f"תאריך: {today}, משך: {duration}\n\n"
+            "סכם ב-5–7 נקודות עיקריות בלבד. קצר, ממוקד, ללא פירוט מיותר.\n"
+            "השתמש בפורמט:\n\n"
+            f"⚡ **סיכום מקוצר — {lesson_name}**\n\n"
+            "1. [נקודה ראשונה]\n"
+            "2. [נקודה שנייה]\n"
+            "...\n\n"
+            "📌 **מסקנה עיקרית:** [משפט אחד]\n\n"
+            "תמליל השיעור:\n" + transcript[:10000]
+        )
+        try:
+            raw = _claude(prompt, max_tokens=1024)
+        except Exception as exc:
+            log.error("Claude error: %s", exc)
+            return jsonify({"error": f"שגיאה בסיכום: {exc}"}), 500
+        return jsonify({"summary": raw, "subject": lesson_name, "structured": None})
 
     prompt = (
         f'אתה עוזר לימודים משפטי. קיבלת תמליל של שיעור בשם: "{lesson_name}"\n'

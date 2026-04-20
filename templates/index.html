@@ -366,6 +366,21 @@
       .rec-ctrl-btn { min-width:calc(50% - 4px); font-size:.82rem; }
     }
 
+    /* ── Summary type chooser ── */
+    .summary-type-row { display:flex; gap:12px; margin-top:16px; }
+    .summary-type-row .btn { flex:1; min-height:54px; font-size:.97rem; }
+    .btn-type-full  { background:#1a3a6e; color:#fff; }
+    .btn-type-full:hover:not(:disabled) { opacity:.88; }
+    .btn-type-short { background:transparent; color:#a8d0f0; border:1px solid rgba(255,255,255,0.18); }
+    .btn-type-short:hover:not(:disabled) { background:rgba(255,255,255,.05); }
+    .summary-type-hint { font-size:.82rem; color:var(--muted); margin-top:8px; text-align:center; }
+    .rec-choose-wrap { padding:20px 0 8px; text-align:center; }
+    .rec-choose-wrap p { font-size:.95rem; color:var(--muted); margin-bottom:14px; }
+    .summary-type-badge { display:inline-flex; align-items:center; gap:6px;
+                          background:rgba(255,255,255,.06); border:1px solid var(--border);
+                          border-radius:20px; padding:4px 14px; font-size:.8rem;
+                          color:var(--muted); margin-bottom:10px; }
+
     /* ── Typography ── */
     h2, h3 { font-size:1.3rem; font-weight:700; }
     .label-upper { font-size:0.75rem; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted); }
@@ -445,7 +460,14 @@
     <div class="upload-sub">PDF, PPTX, DOCX, TXT · עד 50MB</div>
   </div>
   <div id="file-label"></div>
-  <button class="btn btn-primary" id="upload-btn" disabled>סכם את המסמך</button>
+  <div class="summary-type-row">
+    <button class="btn btn-type-full"  id="upload-btn-full"  disabled>📄 סיכום מלא</button>
+    <button class="btn btn-type-short" id="upload-btn-short" disabled>⚡ סיכום מקוצר</button>
+  </div>
+  <div class="summary-type-hint" id="upload-type-hint" style="display:none;">
+    <strong>סיכום מלא</strong> — כל הנושאים, מושגים, טבלאות &nbsp;|&nbsp;
+    <strong>סיכום מקוצר</strong> — 5–7 נקודות עיקריות
+  </div>
 
   <div class="spinner-wrap" id="spinner">
     <div class="spinner"></div>
@@ -455,7 +477,10 @@
 
   <!-- Result -->
   <div id="result">
-    <div class="doc-badge" id="doc-badge"></div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+      <div class="doc-badge" id="doc-badge"></div>
+      <div class="summary-type-badge" id="summary-type-badge" style="display:none;"></div>
+    </div>
     <div class="content-box" id="summary-box"></div>
 
     <!-- Notes -->
@@ -595,6 +620,21 @@
     </div>
   </div>
 
+  <!-- ── State 2b: choose summary type ── -->
+  <div id="rec-choose" style="display:none;">
+    <div class="rec-choose-wrap">
+      <p>ההקלטה הסתיימה — בחר סוג סיכום:</p>
+      <div class="summary-type-row">
+        <button class="btn btn-type-full"  id="rec-choose-full">📄 סיכום מלא</button>
+        <button class="btn btn-type-short" id="rec-choose-short">⚡ סיכום מקוצר</button>
+      </div>
+      <div class="summary-type-hint" style="margin-top:10px;">
+        <strong>סיכום מלא</strong> — כל הנושאים, מושגים, טבלאות &nbsp;|&nbsp;
+        <strong>סיכום מקוצר</strong> — 5–7 נקודות עיקריות
+      </div>
+    </div>
+  </div>
+
   <!-- ── State 3: processing ── -->
   <div id="rec-processing">
     <div class="spinner"></div>
@@ -606,6 +646,7 @@
 
   <!-- ── State 4: done ── -->
   <div id="rec-done" style="display:none;">
+    <div id="rec-summary-type-badge" class="summary-type-badge" style="display:none;"></div>
     <div id="rec-subject-badge" class="subject-badge" style="display:none;"></div>
     <div class="content-box" id="rec-summary" style="margin-bottom:14px;"></div>
     <div class="export-row">
@@ -695,8 +736,10 @@
 <script>
 // ── DOM ─────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const fileInput       = $("file-input"),   dropZone      = $("drop-zone");
-const fileLabel       = $("file-label"),   uploadBtn     = $("upload-btn");
+const fileInput       = $("file-input"),   dropZone        = $("drop-zone");
+const fileLabel       = $("file-label"),   uploadBtnFull   = $("upload-btn-full");
+const uploadBtnShort  = $("upload-btn-short"), uploadTypeHint = $("upload-type-hint");
+const summaryTypeBadge = $("summary-type-badge");
 const spinner         = $("spinner"),      errorBox      = $("error-box");
 const resultDiv       = $("result"),       docBadge      = $("doc-badge");
 const summaryBox      = $("summary-box"),  questionsBtn  = $("questions-btn");
@@ -735,7 +778,9 @@ function setFile(file) {
   }
   selectedFile = file;
   fileLabel.textContent = "📄 " + file.name;
-  uploadBtn.disabled = false;
+  uploadBtnFull.disabled = false;
+  uploadBtnShort.disabled = false;
+  uploadTypeHint.style.display = "block";
   hideError();
 }
 fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
@@ -743,14 +788,16 @@ dropZone.addEventListener("dragover",  e => { e.preventDefault(); dropZone.class
 dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
 dropZone.addEventListener("drop", e => { e.preventDefault(); dropZone.classList.remove("drag-over"); setFile(e.dataTransfer.files[0]); });
 
-uploadBtn.addEventListener("click", async () => {
+async function doUpload(summaryType) {
   if (!selectedFile) return;
-  uploadBtn.disabled = true;
+  uploadBtnFull.disabled = true;
+  uploadBtnShort.disabled = true;
   spinner.classList.add("visible");
   resultDiv.style.display = "none";
   hideError();
   const form = new FormData();
   form.append("file", selectedFile);
+  form.append("summary_type", summaryType);
   try {
     const res = await fetch("/upload", { method:"POST", body: form });
     const data = await res.json();
@@ -761,14 +808,18 @@ uploadBtn.addEventListener("click", async () => {
     currentSummary  = data.summary;
     docBadge.innerHTML   = data.icon + " " + data.label;
     summaryBox.innerHTML = md(data.summary);
+    summaryTypeBadge.textContent = summaryType === "short" ? "⚡ סיכום מקוצר" : "📄 סיכום מלא";
+    summaryTypeBadge.style.display = "inline-flex";
     loadNotes(currentFilename);
     saveToHistory({ filename: currentFilename, label: data.label, icon: data.icon,
                     doc_type: data.doc_type, summary: data.summary });
     hideQuizPanels();
     resultDiv.style.display = "block";
   } catch { showError("שגיאת רשת — נסה שוב"); }
-  finally  { spinner.classList.remove("visible"); uploadBtn.disabled = false; }
-});
+  finally  { spinner.classList.remove("visible"); uploadBtnFull.disabled = false; uploadBtnShort.disabled = false; }
+}
+uploadBtnFull.addEventListener("click",  () => doUpload("full"));
+uploadBtnShort.addEventListener("click", () => doUpload("short"));
 
 // ── Notes ────────────────────────────────────────────────────
 function loadNotes(key) {
@@ -1068,7 +1119,8 @@ resetBtn.addEventListener("click", () => {
   selectedFile = null; docToken = null;
   currentFilename = ""; currentLabel = ""; currentSummary = "";
   fileInput.value = ""; fileLabel.textContent = "";
-  uploadBtn.disabled = true;
+  uploadBtnFull.disabled = true; uploadBtnShort.disabled = true;
+  uploadTypeHint.style.display = "none";
   resultDiv.style.display = "none";
   hideQuizPanels(); stopTimer(); hideError();
 });
@@ -1120,10 +1172,14 @@ const recPauseBtn       = $("rec-pause-btn");
 const recMarkBtn        = $("rec-mark-btn");
 const recFinishBtn      = $("rec-finish-btn");
 const recCancelBtn      = $("rec-cancel-btn");
-const recProcDiv        = $("rec-processing");
-const recErrBox         = $("rec-error");
-const recDoneDiv        = $("rec-done");
-const recSubjectBadge   = $("rec-subject-badge");
+const recProcDiv           = $("rec-processing");
+const recErrBox            = $("rec-error");
+const recChooseDiv         = $("rec-choose");
+const recChooseFullBtn     = $("rec-choose-full");
+const recChooseShortBtn    = $("rec-choose-short");
+const recDoneDiv           = $("rec-done");
+const recSummaryTypeBadge  = $("rec-summary-type-badge");
+const recSubjectBadge      = $("rec-subject-badge");
 const recSummaryEl      = $("rec-summary");
 const recDocxBtn        = $("rec-docx-btn");
 const recNewBtn         = $("rec-new-btn");
@@ -1179,10 +1235,11 @@ function fmtHMS(secs) {
 }
 
 function recShowState(state) {
-  recSetupDiv.style.display  = state === "setup"      ? "block" : "none";
-  recActiveDiv.style.display = state === "active"     ? "block" : "none";
+  recSetupDiv.style.display  = state === "setup"   ? "block" : "none";
+  recActiveDiv.style.display = state === "active"  ? "block" : "none";
+  recChooseDiv.style.display = state === "choose"  ? "block" : "none";
   recProcDiv.classList.toggle("visible", state === "processing");
-  recDoneDiv.style.display   = state === "done"       ? "block" : "none";
+  recDoneDiv.style.display   = state === "done"    ? "block" : "none";
   recErrBox.style.display    = "none";
 }
 
@@ -1399,13 +1456,11 @@ recMarkBtn.addEventListener("click", () => {
   setTimeout(() => recMarkBtn.textContent = orig, 1500);
 });
 
-// ── Finish & summarize ────────────────────────────────────────
-recFinishBtn.addEventListener("click", async () => {
-  // Stop everything
+// ── Finish: stop recording → show type chooser ────────────────
+recFinishBtn.addEventListener("click", () => {
   clearInterval(recTimerInterval); recTimerInterval = null;
   recShouldRestart = false;
   if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
-  // Release screen audio streams
   if (recAudioStream) { recAudioStream.getTracks().forEach(t => t.stop()); recAudioStream = null; }
   if (recMicStream)   { recMicStream.getTracks().forEach(t => t.stop());   recMicStream   = null; }
   if (recAudioContext) { recAudioContext.close(); recAudioContext = null; }
@@ -1415,23 +1470,29 @@ recFinishBtn.addEventListener("click", async () => {
     recShowError("לא הוקלט תמלול — ודא שהמיקרופון פועל ואישרת הרשאה.");
     return;
   }
+  recShowState("choose");
+});
 
+// ── Summarize with chosen type ────────────────────────────────
+async function doRecSummarize(summaryType) {
+  const finalTranscript = (recTranscriptFull + recTranscriptInterim).trim();
   const durationStr = fmtHMS(recElapsed);
   recShowState("processing");
 
   try {
-    const res  = await fetch("/summarize-lecture", {
+    const res = await fetch("/summarize-lecture", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({
-        lesson_name: recCurrentLesson,
-        transcript:  finalTranscript,
-        duration:    durationStr,
+        lesson_name:  recCurrentLesson,
+        transcript:   finalTranscript,
+        duration:     durationStr,
+        summary_type: summaryType,
       }),
     });
     const data = await res.json();
     if (!res.ok || data.error) {
-      recShowState("active");
+      recShowState("choose");
       recShowError(data.error || "שגיאה בסיכום");
       return;
     }
@@ -1440,8 +1501,11 @@ recFinishBtn.addEventListener("click", async () => {
     recStructured  = data.structured || null;
     recSubject     = data.subject || "";
 
+    recSummaryTypeBadge.textContent = summaryType === "short" ? "⚡ סיכום מקוצר" : "📄 סיכום מלא";
+    recSummaryTypeBadge.style.display = "inline-flex";
+
     if (recSubject) {
-      recSubjectBadge.textContent  = "🎓 " + recSubject;
+      recSubjectBadge.textContent   = "🎓 " + recSubject;
       recSubjectBadge.style.display = "inline-flex";
     } else {
       recSubjectBadge.style.display = "none";
@@ -1451,7 +1515,6 @@ recFinishBtn.addEventListener("click", async () => {
     recShowState("done");
     recCard.scrollIntoView({ behavior: "smooth" });
 
-    // Save to history
     saveToHistory({
       filename: recCurrentLesson,
       label:    "הקלטת שיעור" + (recSubject ? " · " + recSubject : ""),
@@ -1460,10 +1523,13 @@ recFinishBtn.addEventListener("click", async () => {
       summary:  data.summary,
     });
   } catch {
-    recShowState("active");
+    recShowState("choose");
     recShowError("שגיאת רשת — נסה שוב");
   }
-});
+}
+
+recChooseFullBtn.addEventListener("click",  () => doRecSummarize("full"));
+recChooseShortBtn.addEventListener("click", () => doRecSummarize("short"));
 
 // ── Cancel recording ─────────────────────────────────────────
 recCancelBtn.addEventListener("click", () => {
@@ -1519,6 +1585,7 @@ recDocxBtn.addEventListener("click", async () => {
 recNewBtn.addEventListener("click", () => {
   recLessonName.value = "";
   recMode = "mic";
+  recSummaryTypeBadge.style.display = "none";
   recShowState("setup");
 });
 
