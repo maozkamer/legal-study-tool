@@ -148,6 +148,66 @@ def _claude(prompt: str, max_tokens: int = 2048) -> str:
 
 
 # ─────────────────────────────────────────────────────────────
+#  Long-transcript chunking helpers
+# ─────────────────────────────────────────────────────────────
+
+CHUNK_SIZE    = 40_000   # characters per chunk
+MAX_CHUNKS    = 4        # max 4 chunks (~3 hours of recording)
+_CHUNK_OVERLAP = 500     # character overlap between consecutive chunks
+
+# Shared case-law detection instructions injected into every full-summary prompt
+_CASE_LAW_INSTRUCTIONS = (
+    "זיהוי פסקי דין:\n"
+    '- חפש כל אזכור של שם תיק בפורמט: X נגד Y, X v Y, ע"א XXXX, בג"ץ XXXX, רע"א XXXX\n'
+    "- גם אם המרצה אומר רק שם משפחה כמו 'פרשת כהן' או 'עניין לוי' — זה פסק דין\n"
+    "- חלץ: שם התיק, העיקרון המשפטי שהמרצה הסביר, הרלוונטיות לנושא השיעור\n"
+    "- אם לא הוזכרו פסקי דין — case_law=[]\n\n"
+)
+
+# Full JSON schema string reused in both direct and merge prompts
+_JSON_SCHEMA = (
+    "{\n"
+    '  "subject": "שם הנושא",\n'
+    '  "sections": [\n'
+    '    {"level": 1, "heading": "כותרת ראשית", "content": "תוכן"},\n'
+    '    {"level": 2, "heading": "כותרת משנה",  "content": "תוכן"}\n'
+    "  ],\n"
+    '  "concepts":  [{"term": "מושג", "definition": "הגדרה", "example": "דוגמה"}],\n'
+    '  "case_law":  [{"name": "שם התיק", "principle": "עיקרון", "relevance": "רלוונטיות"}],\n'
+    '  "statutes":  [{"law": "שם החוק", "section": "סעיף", "content": "תוכן"}],\n'
+    '  "important_moments":  ["רגע חשוב — הוצא מסימון ⭐ בתמלול"],\n'
+    '  "related_topics":     "נושאים קשורים",\n'
+    '  "instructor_emphasis":["נקודה שהמרצה הדגיש"],\n'
+    '  "key_points":         ["נקודה 1","נקודה 2","נקודה 3","נקודה 4","נקודה 5"]\n'
+    "}"
+)
+
+
+def _chunk_text(text: str) -> list[str]:
+    """Split text into overlapping chunks up to MAX_CHUNKS."""
+    chunks, start = [], 0
+    while start < len(text) and len(chunks) < MAX_CHUNKS:
+        chunks.append(text[start : start + CHUNK_SIZE])
+        start += CHUNK_SIZE - _CHUNK_OVERLAP
+    return chunks
+
+
+def _extract_chunk_summary(chunk: str, chunk_num: int, total: int, lesson_name: str) -> str:
+    """Ask Claude to extract key information from a single transcript chunk."""
+    prompt = (
+        f'אתה עוזר לימודים. זהה מהקטע הבא (קטע {chunk_num} מתוך {total}) '
+        f'משיעור בשם "{lesson_name}":\n\n'
+        "- נושאים שנדונו\n"
+        "- פסקי דין שהוזכרו (שם תיק + עיקרון)\n"
+        "- חוקים וסעיפים שהוזכרו\n"
+        "- הגדרות ומושגים\n"
+        "- נקודות שהמרצה הדגיש\n\n"
+        f"קטע:\n{chunk}"
+    )
+    return _claude(prompt, max_tokens=2048)
+
+
+# ─────────────────────────────────────────────────────────────
 #  Routes
 # ─────────────────────────────────────────────────────────────
 
@@ -362,6 +422,7 @@ def summarize_lecture():
     today    = date.today().strftime("%d/%m/%Y")
     now_time = datetime.now().strftime("%H:%M")
 
+    # ── Short summary (bullet points, no chunking) ─────────────
     if summary_type == "short":
         prompt = (
             f'אתה עוזר לימודים משפטי. קיבלת תמליל של שיעור בשם: "{lesson_name}"\n'
@@ -373,7 +434,7 @@ def summarize_lecture():
             "2. [נקודה שנייה]\n"
             "...\n\n"
             "📌 **מסקנה עיקרית:** [משפט אחד]\n\n"
-            "תמליל השיעור:\n" + transcript[:10000]
+            "תמליל השיעור:\n" + transcript[:CHUNK_SIZE]
         )
         try:
             raw = _claude(prompt, max_tokens=1024)
@@ -382,38 +443,60 @@ def summarize_lecture():
             return jsonify({"error": f"שגיאה בסיכום: {exc}"}), 500
         return jsonify({"summary": raw, "subject": lesson_name, "structured": None})
 
-    prompt = (
-        f'אתה עוזר לימודים משפטי. קיבלת תמליל של שיעור בשם: "{lesson_name}"\n'
-        f"תאריך: {today}, שעה: {now_time}, משך: {duration}\n\n"
-        "זהה את הנושא המשפטי (דיני עבודה / דיני עונשין / משפט מנהלי / "
-        "משפט חוקתי / דיני חוזים / אחר).\n\n"
-        "החזר JSON בלבד — ללא markdown, ללא טקסט לפני או אחרי הסוגריים:\n"
-        "{\n"
-        '  "subject": "שם הנושא",\n'
-        '  "sections": [\n'
-        '    {"level": 1, "heading": "כותרת ראשית", "content": "תוכן"},\n'
-        '    {"level": 2, "heading": "כותרת משנה",  "content": "תוכן"}\n'
-        "  ],\n"
-        '  "concepts":  [{"term": "מושג", "definition": "הגדרה", "example": "דוגמה"}],\n'
-        '  "case_law":  [{"name": "שם התיק", "principle": "עיקרון", "relevance": "רלוונטיות"}],\n'
-        '  "statutes":  [{"law": "שם החוק", "section": "סעיף", "content": "תוכן"}],\n'
-        '  "important_moments":  ["רגע חשוב — הוצא מסימון ⭐ בתמלול"],\n'
-        '  "related_topics":     "נושאים קשורים",\n'
-        '  "instructor_emphasis":["נקודה שהמרצה הדגיש"],\n'
-        '  "key_points":         ["נקודה 1","נקודה 2","נקודה 3","נקודה 4","נקודה 5"]\n'
-        "}\n\n"
-        "אם אין פסקי דין — case_law=[]. אם אין סעיפי חוק — statutes=[].\n"
-        "רגעים חשובים מסומנים ב-⭐ בתמלול — חלץ אותם.\n\n"
-        "תמליל השיעור:\n" + transcript[:10000]
-    )
-
+    # ── Full summary ───────────────────────────────────────────
     try:
-        raw = _claude(prompt, max_tokens=4096)
-        js  = raw[raw.find("{") : raw.rfind("}") + 1]
+        if len(transcript) > CHUNK_SIZE:
+            # ── Multi-chunk path: extract then merge ───────────
+            chunks = _chunk_text(transcript)
+            log.info(
+                "Long transcript: %d chars split into %d chunks",
+                len(transcript), len(chunks),
+            )
+            partials = []
+            for i, chunk in enumerate(chunks, 1):
+                partials.append(_extract_chunk_summary(chunk, i, len(chunks), lesson_name))
+
+            merged_input = "\n\n---\n\n".join(
+                f"סיכום קטע {i + 1}:\n{p}" for i, p in enumerate(partials)
+            )
+            prompt = (
+                f'אתה עוזר לימודים משפטי. קיבלת סיכומי ביניים של שיעור בשם: "{lesson_name}"\n'
+                f"תאריך: {today}, שעה: {now_time}, משך: {duration}\n\n"
+                "אחד אותם לסיכום אחד מלא ומובנה. "
+                "זהה את הנושא המשפטי (דיני עבודה / דיני עונשין / משפט מנהלי / "
+                "משפט חוקתי / דיני חוזים / אחר).\n\n"
+                + _CASE_LAW_INSTRUCTIONS
+                + "אם אין פסקי דין — case_law=[]. אם אין סעיפי חוק — statutes=[].\n"
+                "רגעים חשובים מסומנים ב-⭐ — חלץ אותם.\n\n"
+                "החזר JSON בלבד — ללא markdown, ללא טקסט לפני או אחרי הסוגריים:\n"
+                + _JSON_SCHEMA + "\n\n"
+                "סיכומי הביניים:\n" + merged_input
+            )
+        else:
+            # ── Single-chunk path ──────────────────────────────
+            prompt = (
+                f'אתה עוזר לימודים משפטי. קיבלת תמליל של שיעור בשם: "{lesson_name}"\n'
+                f"תאריך: {today}, שעה: {now_time}, משך: {duration}\n\n"
+                "זהה את הנושא המשפטי (דיני עבודה / דיני עונשין / משפט מנהלי / "
+                "משפט חוקתי / דיני חוזים / אחר).\n\n"
+                + _CASE_LAW_INSTRUCTIONS
+                + "אם אין פסקי דין — case_law=[]. אם אין סעיפי חוק — statutes=[].\n"
+                "רגעים חשובים מסומנים ב-⭐ בתמלול — חלץ אותם.\n\n"
+                "החזר JSON בלבד — ללא markdown, ללא טקסט לפני או אחרי הסוגריים:\n"
+                + _JSON_SCHEMA + "\n\n"
+                "תמליל השיעור:\n" + transcript
+            )
+
+        raw        = _claude(prompt, max_tokens=4096)
+        js         = raw[raw.find("{") : raw.rfind("}") + 1]
         structured = json.loads(js)
+
     except (json.JSONDecodeError, ValueError):
         log.warning("JSON parse failed — returning plain summary")
         structured = None
+    except Exception as exc:
+        log.error("Claude error in summarize_lecture: %s", exc)
+        return jsonify({"error": f"שגיאה בסיכום: {exc}"}), 500
 
     if structured is None:
         return jsonify({"summary": raw, "subject": "שיעור", "structured": None})
