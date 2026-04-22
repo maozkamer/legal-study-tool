@@ -456,6 +456,7 @@ def summarize_lecture():
 def export_lecture_docx():
     from docx.shared import Pt, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
 
     data        = request.json or {}
     lesson_name = data.get("lesson_name", "שיעור")
@@ -476,6 +477,35 @@ def export_lecture_docx():
         h = doc.add_heading(text, level=level)
         _rtl(h)
         return h
+
+    def _cell_write(cell, text, bold=False, white_text=False):
+        """Write text into a cell with optional bold/white and RTL paragraph."""
+        cell.text = text
+        p = cell.paragraphs[0]
+        for run in p.runs:
+            if bold:
+                run.bold = True
+            if white_text:
+                run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+        _rtl(p)
+
+    def _cell_bg(cell, hex_color):
+        """Apply a solid background fill to a table cell."""
+        tc   = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd  = OxmlElement("w:shd")
+        shd.set(qn("w:val"),   "clear")
+        shd.set(qn("w:color"), "auto")
+        shd.set(qn("w:fill"),  hex_color)
+        tcPr.append(shd)
+
+    def _tbl_rtl(tbl):
+        """Mark the table as right-to-left so column 0 appears on the right."""
+        tblPr = tbl._tbl.tblPr
+        if tblPr is None:
+            tblPr = OxmlElement("w:tblPr")
+            tbl._tbl.insert(0, tblPr)
+        tblPr.append(OxmlElement("w:bidiVisual"))
 
     # ── Cover page ──────────────────────────────────────────────
     p = doc.add_paragraph()
@@ -516,48 +546,69 @@ def export_lecture_docx():
             _rtl(mp)
 
     # ── Concepts table ───────────────────────────────────────────
+    # RTL order: col 0 (right) = מושג, col 1 (middle) = הגדרה, col 2 (left) = דוגמה
     concepts = structured.get("concepts", [])
     if concepts:
         _heading("💡 טבלת מושגים", level=1)
         tbl = doc.add_table(rows=1, cols=3)
         tbl.style = "Table Grid"
+        _tbl_rtl(tbl)
         hdr = tbl.rows[0].cells
-        hdr[0].text, hdr[1].text, hdr[2].text = "מושג", "הגדרה", "דוגמה"
+        for cell, title in zip(hdr, ["מושג", "הגדרה", "דוגמה"]):
+            _cell_write(cell, title, bold=True, white_text=True)
+            _cell_bg(cell, "1E3A5F")
         for c in concepts:
             row = tbl.add_row().cells
-            row[0].text = c.get("term", "")
-            row[1].text = c.get("definition", "")
-            row[2].text = c.get("example", "")
+            _cell_write(row[0], c.get("term", ""),       bold=True)
+            _cell_bg(row[0], "D6E4F7")
+            _cell_write(row[1], c.get("definition", ""))
+            _cell_bg(row[1], "F5F9FF")
+            _cell_write(row[2], c.get("example", ""))
+            _cell_bg(row[2], "FEF9EC")
         doc.add_paragraph("")
 
     # ── Case-law table ───────────────────────────────────────────
+    # RTL order: col 0 (right) = שם התיק, col 1 = עיקרון, col 2 (left) = רלוונטיות
     case_law = structured.get("case_law", [])
     if case_law:
         _heading("⚖️ טבלת פסיקה", level=1)
         tbl = doc.add_table(rows=1, cols=3)
         tbl.style = "Table Grid"
+        _tbl_rtl(tbl)
         hdr = tbl.rows[0].cells
-        hdr[0].text, hdr[1].text, hdr[2].text = "שם התיק", "עיקרון", "רלוונטיות"
+        for cell, title in zip(hdr, ["שם התיק", "עיקרון", "רלוונטיות"]):
+            _cell_write(cell, title, bold=True, white_text=True)
+            _cell_bg(cell, "1E3A5F")
         for c in case_law:
             row = tbl.add_row().cells
-            row[0].text = c.get("name", "")
-            row[1].text = c.get("principle", "")
-            row[2].text = c.get("relevance", "")
+            _cell_write(row[0], c.get("name", ""),      bold=True)
+            _cell_bg(row[0], "EAF0FA")
+            _cell_write(row[1], c.get("principle", ""))
+            _cell_bg(row[1], "F2F6FC")
+            _cell_write(row[2], c.get("relevance", ""))
+            _cell_bg(row[2], "F8FAFE")
         doc.add_paragraph("")
 
     # ── Statutes table ───────────────────────────────────────────
+    # RTL order: col 0 (right) = שם החוק, col 1 = סעיף, col 2 (left) = תוכן
     statutes = structured.get("statutes", [])
     if statutes:
         _heading("📜 סעיפי חוק", level=1)
         tbl = doc.add_table(rows=1, cols=3)
         tbl.style = "Table Grid"
+        _tbl_rtl(tbl)
         hdr = tbl.rows[0].cells
-        hdr[0].text, hdr[1].text, hdr[2].text = "שם החוק", "סעיף", "תוכן"
+        for cell, title in zip(hdr, ["שם החוק", "סעיף", "תוכן"]):
+            _cell_write(cell, title, bold=True, white_text=True)
+            _cell_bg(cell, "4A235A")
         for s in statutes:
             row = tbl.add_row().cells
-            row[0].text = s.get("law", "")
-            row[1].text = s.get("section", "")
-            row[2].text = s.get("content", "")
+            _cell_write(row[0], s.get("law", ""),     bold=True)
+            _cell_bg(row[0], "F3E8FA")
+            _cell_write(row[1], s.get("section", ""))
+            _cell_bg(row[1], "F9F2FD")
+            _cell_write(row[2], s.get("content", ""))
+            _cell_bg(row[2], "FDF6FF")
         doc.add_paragraph("")
 
     # ── Related topics ───────────────────────────────────────────
