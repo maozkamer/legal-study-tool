@@ -489,6 +489,7 @@ def summarize_lecture():
 
         raw        = _claude(prompt, max_tokens=4096)
         js         = raw[raw.find("{") : raw.rfind("}") + 1]
+        js         = js.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
         structured = json.loads(js)
 
     except (json.JSONDecodeError, ValueError):
@@ -547,6 +548,11 @@ def export_lecture_docx():
     duration    = data.get("duration", "")
     subject     = data.get("subject", "")
     structured  = data.get("structured") or {}
+    if isinstance(structured, str):
+        try:
+            structured = json.loads(structured)
+        except (json.JSONDecodeError, ValueError):
+            structured = {}
     summary_txt = data.get("summary", "")
 
     doc = Document()
