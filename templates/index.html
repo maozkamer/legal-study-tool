@@ -764,7 +764,7 @@ const historySearch   = $("history-search"),clearHistory = $("clear-history-btn"
 
 // ── State ────────────────────────────────────────────────────
 let selectedFile  = null, docToken = null;
-let currentFilename = "", currentLabel = "", currentSummary = "";
+let currentFilename = "", currentLabel = "", currentSummary = "", currentStructured = null;
 let mcQuestions   = [], openQText = "";
 let currentQ = 0, score = 0, wrongQuestions = [];
 let timerMins = 0, timerInterval = null, quizStartTime = null;
@@ -802,10 +802,11 @@ async function doUpload(summaryType) {
     const res = await fetch("/upload", { method:"POST", body: form });
     const data = await res.json();
     if (!res.ok || data.error) { showError(data.error || "שגיאה"); return; }
-    docToken        = data.token;
-    currentFilename = selectedFile.name;
-    currentLabel    = data.label;
-    currentSummary  = data.summary;
+    docToken          = data.token;
+    currentFilename   = selectedFile.name;
+    currentLabel      = data.label;
+    currentSummary    = data.summary;
+    currentStructured = data.structured || null;
     docBadge.innerHTML   = data.icon + " " + data.label;
     summaryBox.innerHTML = md(data.summary);
     summaryTypeBadge.textContent = summaryType === "short" ? "⚡ סיכום מקוצר" : "📄 סיכום מלא";
@@ -842,7 +843,7 @@ docxBtn.addEventListener("click", async () => {
     const res = await fetch("/export-docx", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ summary: currentSummary, filename: currentFilename,
-                             notes: notesTA.value }),
+                             notes: notesTA.value, structured: currentStructured }),
     });
     if (!res.ok) { showError("שגיאה ביצוא Word"); return; }
     const blob = await res.blob();
@@ -1117,7 +1118,7 @@ clearHistory.addEventListener("click", () => {
 // ── Reset ────────────────────────────────────────────────────
 resetBtn.addEventListener("click", () => {
   selectedFile = null; docToken = null;
-  currentFilename = ""; currentLabel = ""; currentSummary = "";
+  currentFilename = ""; currentLabel = ""; currentSummary = ""; currentStructured = null;
   fileInput.value = ""; fileLabel.textContent = "";
   uploadBtnFull.disabled = true; uploadBtnShort.disabled = true;
   uploadTypeHint.style.display = "none";

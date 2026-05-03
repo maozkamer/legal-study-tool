@@ -363,28 +363,145 @@ def flashcards():
 
 @app.route("/export-docx", methods=["POST"])
 def export_docx():
-    data     = request.json or {}
-    summary  = data.get("summary", "")
-    filename = data.get("filename", "סיכום")
-    notes    = data.get("notes", "")
+    from docx.shared import RGBColor
+    from docx.oxml.ns import qn
+
+    data       = request.json or {}
+    summary    = data.get("summary", "")
+    filename   = data.get("filename", "סיכום")
+    notes      = data.get("notes", "")
+    structured = data.get("structured") or {}
+    if isinstance(structured, str):
+        try:
+            structured = json.loads(structured)
+        except (json.JSONDecodeError, ValueError):
+            structured = {}
 
     doc = Document()
 
-    # RTL helper
     def _rtl(paragraph):
         pPr = paragraph._p.get_or_add_pPr()
         bidi = OxmlElement("w:bidi")
         pPr.append(bidi)
 
+    def _heading(text, level):
+        h = doc.add_heading(text, level=level)
+        _rtl(h)
+        return h
+
+    def _cell_write(cell, text, bold=False, white_text=False):
+        cell.text = text
+        p = cell.paragraphs[0]
+        for run in p.runs:
+            if bold:
+                run.bold = True
+            if white_text:
+                run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+        _rtl(p)
+
+    def _cell_bg(cell, hex_color):
+        tc   = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd  = OxmlElement("w:shd")
+        shd.set(qn("w:val"),   "clear")
+        shd.set(qn("w:color"), "auto")
+        shd.set(qn("w:fill"),  hex_color)
+        tcPr.append(shd)
+
+    def _tbl_rtl(tbl):
+        tblPr = tbl._tbl.tblPr
+        if tblPr is None:
+            tblPr = OxmlElement("w:tblPr")
+            tbl._tbl.insert(0, tblPr)
+        tblPr.append(OxmlElement("w:bidiVisual"))
+
     title_para = doc.add_heading(filename, level=0)
     _rtl(title_para)
 
-    for line in summary.split("\n"):
-        clean = line.strip("*").strip()
-        if not clean:
-            continue
-        p = doc.add_paragraph(clean)
-        _rtl(p)
+    if structured.get("sections"):
+        # ── Structured path ──────────────────────────────────────
+        for sec in structured["sections"]:
+            _heading(sec.get("heading", ""), level=min(sec.get("level", 1), 2))
+            content = sec.get("content", "")
+            if content:
+                cp = doc.add_paragraph(content)
+                _rtl(cp)
+
+        concepts = structured.get("concepts", [])
+        if concepts:
+            _heading("💡 טבלת מושגים", level=1)
+            tbl = doc.add_table(rows=1, cols=3)
+            tbl.style = "Table Grid"
+            _tbl_rtl(tbl)
+            hdr = tbl.rows[0].cells
+            for cell, title in zip(hdr, ["מושג", "הגדרה", "דוגמה"]):
+                _cell_write(cell, title, bold=True, white_text=True)
+                _cell_bg(cell, "1E3A5F")
+            for c in concepts:
+                row = tbl.add_row().cells
+                _cell_write(row[0], c.get("term", ""),       bold=True)
+                _cell_bg(row[0], "D6E4F7")
+                _cell_write(row[1], c.get("definition", ""))
+                _cell_bg(row[1], "F5F9FF")
+                _cell_write(row[2], c.get("example", ""))
+                _cell_bg(row[2], "FEF9EC")
+            doc.add_paragraph("")
+
+        case_law = structured.get("case_law", [])
+        if case_law:
+            _heading("⚖️ טבלת פסיקה", level=1)
+            tbl = doc.add_table(rows=1, cols=3)
+            tbl.style = "Table Grid"
+            _tbl_rtl(tbl)
+            hdr = tbl.rows[0].cells
+            for cell, title in zip(hdr, ["שם התיק", "עיקרון", "רלוונטיות"]):
+                _cell_write(cell, title, bold=True, white_text=True)
+                _cell_bg(cell, "1E3A5F")
+            for c in case_law:
+                row = tbl.add_row().cells
+                _cell_write(row[0], c.get("name", ""),      bold=True)
+                _cell_bg(row[0], "EAF0FA")
+                _cell_write(row[1], c.get("principle", ""))
+                _cell_bg(row[1], "F2F6FC")
+                _cell_write(row[2], c.get("relevance", ""))
+                _cell_bg(row[2], "F8FAFE")
+            doc.add_paragraph("")
+
+        statutes = structured.get("statutes", [])
+        if statutes:
+            _heading("📜 סעיפי חוק", level=1)
+            tbl = doc.add_table(rows=1, cols=3)
+            tbl.style = "Table Grid"
+            _tbl_rtl(tbl)
+            hdr = tbl.rows[0].cells
+            for cell, title in zip(hdr, ["שם החוק", "סעיף", "תוכן"]):
+                _cell_write(cell, title, bold=True, white_text=True)
+                _cell_bg(cell, "4A235A")
+            for s in statutes:
+                row = tbl.add_row().cells
+                _cell_write(row[0], s.get("law", ""),     bold=True)
+                _cell_bg(row[0], "F3E8FA")
+                _cell_write(row[1], s.get("section", ""))
+                _cell_bg(row[1], "F9F2FD")
+                _cell_write(row[2], s.get("content", ""))
+                _cell_bg(row[2], "FDF6FF")
+            doc.add_paragraph("")
+
+        key_points = structured.get("key_points", [])
+        if key_points:
+            _heading("📌 נקודות עיקריות", level=1)
+            for i, kp in enumerate(key_points[:5], 1):
+                kpp = doc.add_paragraph(f"{i}. {kp}")
+                _rtl(kpp)
+
+    else:
+        # ── Fallback: plain text ─────────────────────────────────
+        for line in summary.split("\n"):
+            clean = line.strip("*").strip()
+            if not clean:
+                continue
+            p = doc.add_paragraph(clean)
+            _rtl(p)
 
     if notes.strip():
         doc.add_paragraph("")
