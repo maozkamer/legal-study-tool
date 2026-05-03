@@ -5,6 +5,8 @@ import json
 import logging
 from datetime import date, datetime
 from flask import Flask, request, render_template, jsonify, send_file, send_from_directory
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import PyPDF2
 from pptx import Presentation
 from docx import Document
@@ -17,7 +19,11 @@ log = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
+limiter = Limiter(app=app, key_func=get_remote_address, default_limits=["100 per hour", "20 per minute"])
+
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+CLAUDE_MODEL = "claude-opus-4-5"
 
 # In-memory text cache: token → extracted text (up to 50 entries)
 _TEXT_CACHE: dict[str, str] = {}
@@ -140,7 +146,7 @@ TYPE_LABELS = {
 
 def _claude(prompt: str, max_tokens: int = 2048) -> str:
     response = client.messages.create(
-        model="claude-opus-4-5",
+        model=CLAUDE_MODEL,
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -237,6 +243,7 @@ def icon_512():
 
 
 @app.route("/upload", methods=["POST"])
+@limiter.limit("20 per hour")
 def upload():
     file = request.files.get("file")
     if not file or not file.filename:
@@ -301,6 +308,7 @@ def upload():
 
 
 @app.route("/questions", methods=["POST"])
+@limiter.limit("20 per hour")
 def questions():
     token = (request.json or {}).get("token", "")
     text  = _TEXT_CACHE.get(token)
@@ -334,6 +342,7 @@ def questions():
 
 
 @app.route("/flashcards", methods=["POST"])
+@limiter.limit("20 per hour")
 def flashcards():
     token = (request.json or {}).get("token", "")
     text  = _TEXT_CACHE.get(token)
@@ -526,6 +535,7 @@ def export_docx():
 
 
 @app.route("/summarize-lecture", methods=["POST"])
+@limiter.limit("20 per hour")
 def summarize_lecture():
     data         = request.json or {}
     lesson_name  = data.get("lesson_name", "שיעור")
@@ -862,6 +872,7 @@ def export_lecture_docx():
 
 
 @app.route("/concept-map", methods=["POST"])
+@limiter.limit("20 per hour")
 def concept_map():
     token = (request.json or {}).get("token", "")
     text  = _TEXT_CACHE.get(token)

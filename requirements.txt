@@ -1,4 +1,5 @@
 flask
+flask-limiter
 PyPDF2
 python-pptx
 python-docx
