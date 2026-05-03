@@ -334,6 +334,11 @@
                     resize:vertical; margin-bottom:14px; }
     .rec-live-box:focus { outline:none; border-color:var(--lt); }
 
+    /* Transcript download row */
+    .rec-dl-row { display:flex; gap:8px; margin-bottom:10px; }
+    .rec-dl { background:rgba(39,174,96,.1); color:#6fcf97; border-color:rgba(39,174,96,.4); flex:1; }
+    .rec-dl:hover:not(:disabled) { background:rgba(39,174,96,.22); }
+
     /* Control buttons row */
     .rec-controls { display:flex; flex-wrap:wrap; gap:8px; }
     .rec-ctrl-btn { flex:1; min-width:110px; min-height:var(--touch);
@@ -610,8 +615,12 @@
       <span style="color:#ff7043;font-weight:600;font-size:.93rem;" id="rec-lesson-label"></span>
     </div>
     <div class="rec-timer" id="rec-timer-el">00:00:00</div>
-    <textarea class="rec-live-box" id="rec-transcript" readonly
+    <textarea class="rec-live-box" id="rec-transcript"
               placeholder="התמלול יופיע כאן בזמן אמת בזמן הקלטה..."></textarea>
+    <div class="rec-dl-row">
+      <button class="rec-ctrl-btn rec-dl" id="rec-dl-txt-live">📥 הורד כ-TXT</button>
+      <button class="rec-ctrl-btn rec-dl" id="rec-dl-docx-live">📥 הורד כ-Word</button>
+    </div>
     <div class="rec-controls">
       <button class="rec-ctrl-btn rec-pause"  id="rec-pause-btn">⏸️ השהה</button>
       <button class="rec-ctrl-btn rec-mark"   id="rec-mark-btn">⭐ סמן רגע חשוב</button>
@@ -649,6 +658,14 @@
     <div id="rec-summary-type-badge" class="summary-type-badge" style="display:none;"></div>
     <div id="rec-subject-badge" class="subject-badge" style="display:none;"></div>
     <div class="content-box" id="rec-summary" style="margin-bottom:14px;"></div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:.9rem;font-weight:600;color:var(--muted);margin-bottom:8px;">📝 תמלול גולמי</div>
+      <textarea class="rec-live-box" id="rec-transcript-done" style="min-height:120px;max-height:200px;"></textarea>
+      <div class="rec-dl-row">
+        <button class="rec-ctrl-btn rec-dl" id="rec-dl-txt-done">📥 הורד כ-TXT</button>
+        <button class="rec-ctrl-btn rec-dl" id="rec-dl-docx-done">📥 הורד כ-Word</button>
+      </div>
+    </div>
     <div class="export-row">
       <button class="btn btn-outline" id="rec-docx-btn">📄 הורד Word מסודר</button>
     </div>
@@ -1182,10 +1199,15 @@ const recDoneDiv           = $("rec-done");
 const recSummaryTypeBadge  = $("rec-summary-type-badge");
 const recSubjectBadge      = $("rec-subject-badge");
 const recSummaryEl      = $("rec-summary");
-const recDocxBtn        = $("rec-docx-btn");
-const recNewBtn         = $("rec-new-btn");
-const recModeBadge      = $("rec-mode-badge");
-const recBrowserHint    = $("rec-browser-hint");
+const recDocxBtn           = $("rec-docx-btn");
+const recNewBtn            = $("rec-new-btn");
+const recModeBadge         = $("rec-mode-badge");
+const recBrowserHint       = $("rec-browser-hint");
+const recTranscriptDone    = $("rec-transcript-done");
+const recDlTxtLive         = $("rec-dl-txt-live");
+const recDlDocxLive        = $("rec-dl-docx-live");
+const recDlTxtDone         = $("rec-dl-txt-done");
+const recDlDocxDone        = $("rec-dl-docx-done");
 
 // ── State ─────────────────────────────────────────────────────
 let recTimerInterval  = null;
@@ -1195,6 +1217,7 @@ let recShouldRestart  = false;
 let recognition       = null;
 let recTranscriptFull = "";
 let recTranscriptInterim = "";
+let recUserEdited     = false;
 let recStructured     = null;
 let recSummaryText    = "";
 let recCurrentLesson  = "";
@@ -1226,6 +1249,45 @@ const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.
   }
   recBrowserHint.style.display = "block";
 })();
+
+// ── User-edit detection ───────────────────────────────────────
+recTranscript.addEventListener("input", () => {
+  recUserEdited        = true;
+  recTranscriptFull    = recTranscript.value;
+  recTranscriptInterim = "";
+});
+
+// ── Transcript download helpers ───────────────────────────────
+function dlTranscriptTxt(text) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const a    = document.createElement("a");
+  a.href     = URL.createObjectURL(blob);
+  a.download = recCurrentLesson + "-תמלול.txt";
+  a.click();
+}
+
+async function dlTranscriptDocx(text, btn) {
+  btn.disabled = true;
+  try {
+    const res = await fetch("/export-docx", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ summary: text, filename: recCurrentLesson + "-תמלול" }),
+    });
+    if (!res.ok) { recShowError("שגיאה ביצוא Word"); return; }
+    const blob = await res.blob();
+    const a    = document.createElement("a");
+    a.href     = URL.createObjectURL(blob);
+    a.download = recCurrentLesson + "-תמלול.docx";
+    a.click();
+  } catch { recShowError("שגיאת רשת ביצוא"); }
+  finally  { btn.disabled = false; }
+}
+
+recDlTxtLive.addEventListener("click",  () => dlTranscriptTxt(recTranscript.value));
+recDlDocxLive.addEventListener("click", () => dlTranscriptDocx(recTranscript.value, recDlDocxLive));
+recDlTxtDone.addEventListener("click",  () => dlTranscriptTxt(recTranscriptDone.value));
+recDlDocxDone.addEventListener("click", () => dlTranscriptDocx(recTranscriptDone.value, recDlDocxDone));
 
 // ── Helpers ───────────────────────────────────────────────────
 function fmtHMS(secs) {
@@ -1272,6 +1334,7 @@ async function recBeginRecording() {
   recElapsed           = 0;
   recTranscriptFull    = "";
   recTranscriptInterim = "";
+  recUserEdited        = false;
   recPaused            = false;
   recStructured        = null;
   recSummaryText       = "";
@@ -1322,8 +1385,10 @@ async function recBeginRecording() {
             else interim += t;
           }
           recTranscriptInterim = interim;
-          recTranscript.value  = recTranscriptFull + interim;
-          recTranscript.scrollTop = recTranscript.scrollHeight;
+          if (!recUserEdited) {
+            recTranscript.value = recTranscriptFull + interim;
+            recTranscript.scrollTop = recTranscript.scrollHeight;
+          }
         };
 
         recognition.onerror = (e) => {
@@ -1402,8 +1467,10 @@ async function recBeginRecording() {
         else interim += t;
       }
       recTranscriptInterim = interim;
-      recTranscript.value  = recTranscriptFull + interim;
-      recTranscript.scrollTop = recTranscript.scrollHeight;
+      if (!recUserEdited) {
+        recTranscript.value = recTranscriptFull + interim;
+        recTranscript.scrollTop = recTranscript.scrollHeight;
+      }
     };
 
     recognition.onerror = (e) => {
@@ -1450,8 +1517,10 @@ recPauseBtn.addEventListener("click", () => {
 // ── Mark important moment ─────────────────────────────────────
 recMarkBtn.addEventListener("click", () => {
   recTranscriptFull += " [⭐ רגע חשוב] ";
-  recTranscript.value = recTranscriptFull + recTranscriptInterim;
-  recTranscript.scrollTop = recTranscript.scrollHeight;
+  if (!recUserEdited) {
+    recTranscript.value = recTranscriptFull + recTranscriptInterim;
+    recTranscript.scrollTop = recTranscript.scrollHeight;
+  }
   const orig = recMarkBtn.textContent;
   recMarkBtn.textContent = "✅ סומן!";
   setTimeout(() => recMarkBtn.textContent = orig, 1500);
@@ -1513,6 +1582,11 @@ async function doRecSummarize(summaryType) {
     }
 
     recSummaryEl.innerHTML = md(data.summary);
+
+    const finalTxt = (recTranscriptFull + recTranscriptInterim).trim();
+    recTranscriptDone.value = finalTxt;
+    try { localStorage.setItem("transcript_" + recCurrentLesson, finalTxt); } catch (_) {}
+
     recShowState("done");
     recCard.scrollIntoView({ behavior: "smooth" });
 
@@ -1547,6 +1621,7 @@ recCancelBtn.addEventListener("click", () => {
   // Clear all transcript data
   recTranscriptFull    = "";
   recTranscriptInterim = "";
+  recUserEdited        = false;
   recTranscript.value  = "";
   recElapsed           = 0;
   recMarkedMoments     = [];
