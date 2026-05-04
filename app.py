@@ -173,20 +173,136 @@ _CASE_LAW_INSTRUCTIONS = (
 # Full JSON schema string reused in both direct and merge prompts
 _JSON_SCHEMA = (
     "{\n"
-    '  "subject": "שם הנושא",\n'
+    '  "subject": "שם הנושא המשפטי המדויק (דיני עונשין / דיני חוזים / וכו\')",\n'
+    '  "table_of_contents": ["נושא 1", "נושא 2"],\n'
     '  "sections": [\n'
-    '    {"level": 1, "heading": "כותרת ראשית", "content": "תוכן"},\n'
-    '    {"level": 2, "heading": "כותרת משנה",  "content": "תוכן"}\n'
+    '    {"level": 1, "heading": "כותרת ראשית", "content": "תוכן מלא ומקיף עם דוגמאות, ניתוחים, הרחבות, סיכום ביניים ושאלות עצמיות"},\n'
+    '    {"level": 2, "heading": "תת-נושא", "content": "..."}\n'
     "  ],\n"
-    '  "concepts":  [{"term": "מושג", "definition": "הגדרה", "example": "דוגמה"}],\n'
-    '  "case_law":  [{"name": "שם התיק", "principle": "עיקרון", "relevance": "רלוונטיות"}],\n'
-    '  "statutes":  [{"law": "שם החוק", "section": "סעיף", "content": "תוכן"}],\n'
-    '  "important_moments":  ["רגע חשוב — הוצא מסימון ⭐ בתמלול"],\n'
-    '  "related_topics":     "נושאים קשורים",\n'
-    '  "instructor_emphasis":["נקודה שהמרצה הדגיש"],\n'
-    '  "key_points":         ["נקודה 1","נקודה 2","נקודה 3","נקודה 4","נקודה 5"]\n'
+    '  "concepts": [{"term": "מושג", "definition": "הגדרה מדויקת ומקצועית", "example": "דוגמה ספציפית"}],\n'
+    '  "comparison_tables": [\n'
+    '    {"title": "השוואה בין X ל-Y", "columns": ["קריטריון", "X", "Y"],\n'
+    '     "rows": [["מאפיין 1", "ערך X", "ערך Y"], ["מאפיין 2", "ערך X", "ערך Y"]]}\n'
+    "  ],\n"
+    '  "case_law": [\n'
+    '    {"name": "שם פסק הדין", "facts": "עובדות המקרה",\n'
+    '     "arguments": "טענות הצדדים", "ruling": "הכרעת בית המשפט",\n'
+    '     "principle": "ההלכה / העיקרון", "relevance": "רלוונטיות לנושא"}\n'
+    "  ],\n"
+    '  "statutes": [\n'
+    '    {"law": "שם החוק", "section": "סעיף X",\n'
+    '     "text": "לשון הסעיף המלאה", "analysis": "ניתוח רכיבי הסעיף (יסוד עובדתי, יסוד נפשי, נסיבות, תוצאה)"}\n'
+    "  ],\n"
+    '  "scales": [\n'
+    '    {"title": "סולם X (מהחמור לקל)",\n'
+    '     "levels": [{"name": "רמה 1", "description": "תיאור"}, {"name": "רמה 2", "description": "תיאור"}]}\n'
+    "  ],\n"
+    '  "important_moments": ["רגעים חשובים שהמרצה הדגיש — מסימוני ⭐"],\n'
+    '  "exam_warnings": ["⚠️ נושא שייבחן", "❗ נקודת בלבול נפוצה"],\n'
+    '  "self_check_questions": ["🤔 שאלה לחזרה 1", "🤔 שאלה 2"],\n'
+    '  "related_topics": "קישורים לנושאים אחרים בקורס",\n'
+    '  "instructor_emphasis": ["נקודות שהמרצה הדגיש"],\n'
+    '  "key_points": ["נקודה 1", "נקודה 2", "נקודה 3", "נקודה 4", "נקודה 5"],\n'
+    '  "transcript_unclear_zones": ["אזורים בתמלול שלא היו ברורים — בדוק בהקלטה"]\n'
     "}"
 )
+
+# Academic-level instructions for the comprehensive lecture summary prompt
+_ACADEMIC_INSTRUCTIONS = (
+    "=== עקרונות הסיכום (חובה לעקוב אחר כולם) ===\n\n"
+    "1. שפה: עברית בלבד. מונחים מקצועיים באנגלית מותרים (Mens Rea, corpus delicti וכו'). "
+    "כתיבה זורמת, דידקטית, בסגנון מרצה שמדבר אל הסטודנט — לא ניסוח רובוטי.\n\n"
+    "2. אורך: ככל שצריך. שיעור של שעה → 6–12 עמודי סיכום מלא. "
+    "אל תוותר על דוגמאות, ניתוחים, או הסברים בגלל אורך.\n\n"
+    "3. מבנה: level 1 = נושא ראשי, level 2 = תת-נושא. הצג היררכיה ברורה.\n\n"
+    "4. סגנון דיאלוגי: \"השאלה שלנו היא...\", \"נשאל...\", \"בואו נבחן...\", "
+    "\"מה זה אומר בפועל?\". שאלות מנחות שמובילות את הקורא דרך הלוגיקה.\n\n"
+    "5. דוגמאות: כל מושג תיאורטי ← דוגמה ספציפית וממחישה. "
+    "סמן: \"לדוג':\", \"מקרה:\", \"דוגמה:\". "
+    "אם המרצה נתן דוגמה — השתמש בה. אם לא — הבא דוגמה משפטית מוכרת מהידע שלך.\n\n"
+    "6. סעיפי חוק: צטט לשון מלאה (מהידע שלך אם יודע) → שדה text. "
+    "נתח לרכיבים (יסוד עובדתי, יסוד נפשי, נסיבות, תוצאה) → שדה analysis. "
+    "סמן: \"📜 לשון הסעיף:\".\n\n"
+    "7. פסקי דין — ניתוח אקדמי מלא: שם, עובדות, טענות, הכרעה, הלכה, רלוונטיות. "
+    "אם המרצה הזכיר רק שם — הרחב מהידע שלך אם מכיר. סמן: \"⚖️\".\n\n"
+    "8. מינוח: תרגם לטרמינולוגיה מקצועית גם אם המרצה דיבר בשפה פשוטה "
+    "(רשלנות, אחריות קפידה, קוגנטי, קש\"ס עובדתי, השתק שיפוטי וכו').\n\n"
+    "9. הרחבות Claude: \"💭 הערת הרחבה:\" — ציין בבירור מה Claude מוסיף. "
+    "הקורא חייב לדעת מה אמר המרצה ומה הוסיף Claude.\n\n"
+    "10. הצלבות: \"(ראה גם: [נושא])\" כשרלוונטי לחומר אחר בקורס.\n\n"
+    "11. סולמות: מושגים מדורגים (מחשבה פלילית < רשלנות < אחריות קפידה) → "
+    "שדה scales עם levels מהחמור לקל.\n\n"
+    "12. השוואות: מושגים שמתבלבלים ביניהם → comparison_tables עם columns ו-rows.\n\n"
+    "13. אזהרות: ⚠️ ו-❗ → exam_warnings. "
+    "נושאים שהמרצה הדגיש, סימוני ⭐ בתמלול, \"שימו לב\", \"זה ייבחן\".\n\n"
+    "14. סיכום ביניים: \"📌 סיכום ביניים:\" + 3–4 נקודות — בסוף כל section level 1, בתוך content.\n\n"
+    "15. שאלות עצמיות: 2–3 שאלות פתוחות בלי תשובות → self_check_questions.\n\n"
+    "16. סמנים: 📜 לשון החוק | ⚖️ פסיקה | 🎓 הסבר המרצה | 💭 הרחבת Claude.\n\n"
+    "17. אי-בהירות: כשהתמלול לא ברור (רעש/חיתוך) → transcript_unclear_zones. "
+    "אל תנחש ואל תמציא.\n\n"
+    "18. תוכן עניינים: רשימה ממוספרת של כל הנושאים הראשיים → table_of_contents.\n\n"
+    "=== זיהוי פסקי דין וחוקים ===\n\n"
+    + _CASE_LAW_INSTRUCTIONS
+    + "זיהוי חוקים: כל \"סעיף X לחוק Y\" — חלץ, צטט לשון מלאה (אם יודע), נתח.\n"
+    "אם החוק לא מוכר — ציין רק מה שהמרצה אמר עליו.\n"
+    "אם אין פסקי דין — case_law=[]. אם אין חוקים — statutes=[].\n"
+    "אם אין סולמות — scales=[]. אם אין השוואות — comparison_tables=[].\n"
+    "אם אין אזורים לא ברורים — transcript_unclear_zones=[].\n\n"
+    "החזר JSON בלבד — ללא markdown, ללא טקסט לפני או אחרי הסוגריים:\n"
+)
+
+
+def _full_lecture_prompt(lesson_name: str, today: str, now_time: str, duration: str, transcript_section: str) -> str:
+    return (
+        "אתה עוזר לימודים משפטי ברמה אקדמית גבוהה. "
+        "אתה מסכם שיעורי משפטים בסגנון של מרצה אקדמי מצטיין — מעמיק, דידקטי, מקצועי. "
+        "הסיכום משמש את הסטודנט כתחליף מלא לספר/לשיעור, ולכן חייב להיות מקיף ואיכותי.\n\n"
+        f'פרטי השיעור:\nשם: "{lesson_name}"\nתאריך: {today}, שעה: {now_time}, משך: {duration}\n\n'
+        "=== עקרונות הסיכום (חובה לעקוב אחר כולם) ===\n\n"
+        "1. עברית בלבד: הסיכום כולו בעברית, ללא מילים באנגלית פרט למונחים מקצועיים מוכרים בלבד "
+        "(Mens Rea, corpus delicti). כתיבה זורמת בסגנון של מרצה טוב — לא ניסוח רובוטי.\n\n"
+        "2. אורך: ככל שצריך. אל תקצר. שיעור של שעה יכול להפיק 6-12 עמודי סיכום. "
+        "אל תוותר על דוגמאות, ניתוחים, או הסברים בגלל אורך.\n\n"
+        "3. מבנה היררכי: זהה את הנושא הראשי ופרק לעקרונות / תתי-נושאים. "
+        "השתמש ברמות level 1 ו-level 2 בכותרות.\n\n"
+        '4. סגנון דיאלוגי: "השאלה שלנו היא...", "נשאל...", "במילים אחרות...", "בואו נבחן...". '
+        "שאלות מנחות שמובילות את הקורא דרך הלוגיקה.\n\n"
+        "5. דוגמאות בכל מושג מופשט: כל מושג תיאורטי חייב לקבל דוגמה ספציפית. "
+        "סמן ב-\"לדוג':\"/\"מקרה:\". אם המרצה נתן — השתמש בה. אם לא — הוסף מהידע שלך.\n\n"
+        "6. ציטוט סעיפי חוק וניתוחם: כשמוזכר סעיף — צטט אותו (גם אם המרצה לא קרא — הבא מהידע שלך). "
+        "אחרי הציטוט — נתח את רכיביו: יסוד עובדתי (התנהגות / נסיבות / תוצאה), יסוד נפשי. "
+        "אם רלוונטי — פרק את הסעיף מילה-מילה.\n\n"
+        "7. פסקי דין — ניתוח אקדמי מלא: שם → עובדות → טענות הצדדים → הכרעת בית המשפט → "
+        "ההלכה / העיקרון → רלוונטיות. אם המרצה הזכיר רק שם — הרחב מהידע שלך.\n\n"
+        "8. שימוש במונחים משפטיים מקצועיים: גם אם המרצה דיבר בשפה פשוטה — תרגם לטרמינולוגיה משפטית "
+        "(קוגנטי, פררוגטיבה, השתק שיפוטי, קש\"ס עובדתי, וכו').\n\n"
+        "9. הערות הרחבה: כשהמרצה לא פירט משהו, הוסף הערה מסומנת \"💭 הערת הרחבה:\" עם הסבר מהידע "
+        "המשפטי שלך. הקורא צריך לדעת מה אמר המרצה ומה אתה הוספת.\n\n"
+        "10. הצלבות פנימיות: \"(ראה גם: [נושא])\" כשנושאים מתחברים.\n\n"
+        "11. סולם החמרה ויזואלי: כשיש מושגים מדורגים (מחשבה פלילית < רשלנות < אחריות קפידה), "
+        "הצג כסקלה מסודרת עם תיאור כל רמה.\n\n"
+        "12. טבלאות הבחנה: כשיש מושגים דומים שקל להתבלבל ביניהם (כוונה vs כוונה מיוחדת, מעשה vs מחדל), "
+        "צור טבלת השוואה.\n\n"
+        "13. סימוני אזהרה: \"⚠️ חשוב לבחינה\" — לנושאים שהמרצה הדגיש (סימוני ⭐ או אינטונציה: "
+        "\"שימו לב\", \"זה ייבחן\"). \"❗ פעמים רבות מבלבל בין X ל-Y\". \"💡 טיפ:\".\n\n"
+        "14. סיכומי ביניים: בסוף כל סקציית level 1 — הוסף \"📌 סיכום ביניים:\" עם 3-4 נקודות מרכזיות.\n\n"
+        "15. הבחנה ויזואלית לפי סוג תוכן בתוך ה-content:\n"
+        "- 📜 לשון החוק: ציטוט מדויק\n"
+        "- ⚖️ פסיקה: ניתוח אקדמי\n"
+        "- 🎓 המרצה הסביר: דוגמה מהשיעור\n"
+        "- 💭 הערת הרחבה: ידע משפטי כללי\n\n"
+        "16. רגעי חוסר ודאות בתמלול: \"❓ באזור זה התמלול לא היה ברור — בדוק בהקלטה\". "
+        "אל תנחש ואל תמציא.\n\n"
+        "זיהוי פסקי דין: כל אזכור של X נגד Y, ע\"א, בג\"ץ, רע\"א, \"פרשת X\", \"עניין X\", \"הלכת X\" — "
+        "כולם פסקי דין. חלץ עובדות, טיעונים, הכרעה, הלכה.\n\n"
+        "זיהוי חוקים: כל \"סעיף X לחוק Y\" — חלץ, צטט, נתח.\n\n"
+        "רגעים חשובים: מסומנים ב-⭐ בתמליל. אם אין סימונים — זהה לבד.\n\n"
+        "=== פורמט הפלט ===\n\n"
+        "החזר JSON בלבד — ללא markdown, ללא טקסט מקדים. מבנה:\n"
+        + _JSON_SCHEMA + "\n\n"
+        "חשוב: אל תקצר. אל תוותר על איכות. הסטודנט מסתמך על הסיכום הזה במקום השיעור.\n\n"
+        + transcript_section
+    )
 
 
 def _chunk_text(text: str) -> list[str]:
@@ -586,32 +702,15 @@ def summarize_lecture():
             merged_input = "\n\n---\n\n".join(
                 f"סיכום קטע {i + 1}:\n{p}" for i, p in enumerate(partials)
             )
-            prompt = (
-                f'אתה עוזר לימודים משפטי. קיבלת סיכומי ביניים של שיעור בשם: "{lesson_name}"\n'
-                f"תאריך: {today}, שעה: {now_time}, משך: {duration}\n\n"
-                "אחד אותם לסיכום אחד מלא ומובנה. "
-                "זהה את הנושא המשפטי (דיני עבודה / דיני עונשין / משפט מנהלי / "
-                "משפט חוקתי / דיני חוזים / אחר).\n\n"
-                + _CASE_LAW_INSTRUCTIONS
-                + "אם אין פסקי דין — case_law=[]. אם אין סעיפי חוק — statutes=[].\n"
-                "רגעים חשובים מסומנים ב-⭐ — חלץ אותם.\n\n"
-                "החזר JSON בלבד — ללא markdown, ללא טקסט לפני או אחרי הסוגריים:\n"
-                + _JSON_SCHEMA + "\n\n"
-                "סיכומי הביניים:\n" + merged_input
+            prompt = _full_lecture_prompt(
+                lesson_name, today, now_time, duration,
+                "סיכומי הביניים:\n" + merged_input,
             )
         else:
             # ── Single-chunk path ──────────────────────────────
-            prompt = (
-                f'אתה עוזר לימודים משפטי. קיבלת תמליל של שיעור בשם: "{lesson_name}"\n'
-                f"תאריך: {today}, שעה: {now_time}, משך: {duration}\n\n"
-                "זהה את הנושא המשפטי (דיני עבודה / דיני עונשין / משפט מנהלי / "
-                "משפט חוקתי / דיני חוזים / אחר).\n\n"
-                + _CASE_LAW_INSTRUCTIONS
-                + "אם אין פסקי דין — case_law=[]. אם אין סעיפי חוק — statutes=[].\n"
-                "רגעים חשובים מסומנים ב-⭐ בתמלול — חלץ אותם.\n\n"
-                "החזר JSON בלבד — ללא markdown, ללא טקסט לפני או אחרי הסוגריים:\n"
-                + _JSON_SCHEMA + "\n\n"
-                "תמליל השיעור:\n" + transcript
+            prompt = _full_lecture_prompt(
+                lesson_name, today, now_time, duration,
+                "תמליל השיעור:\n" + transcript,
             )
 
         raw        = _claude(prompt, max_tokens=4096)
@@ -684,29 +783,51 @@ def export_lecture_docx():
 
     doc = Document()
 
+    # ── Helpers ─────────────────────────────────────────────────
+
     def _rtl(paragraph):
         pPr = paragraph._p.get_or_add_pPr()
-        bidi = OxmlElement("w:bidi")
-        pPr.append(bidi)
+        if pPr.find(qn("w:bidi")) is None:
+            pPr.append(OxmlElement("w:bidi"))
 
-    def _heading(text, level):
-        h = doc.add_heading(text, level=level)
-        _rtl(h)
-        return h
+    def _rtl_right(paragraph):
+        _rtl(paragraph)
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
-    def _cell_write(cell, text, bold=False, white_text=False):
-        """Write text into a cell with optional bold/white and RTL paragraph."""
-        cell.text = text
-        p = cell.paragraphs[0]
-        for run in p.runs:
-            if bold:
-                run.bold = True
-            if white_text:
-                run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-        _rtl(p)
+    def _set_font(run, size_pt=24, bold=False, italic=False, color_hex=None):
+        run.bold   = bold
+        run.italic = italic
+        run.font.size = Pt(size_pt)
+        if color_hex:
+            run.font.color.rgb = RGBColor(
+                int(color_hex[0:2], 16),
+                int(color_hex[2:4], 16),
+                int(color_hex[4:6], 16),
+            )
+        # Set David font for all script types (ascii, hAnsi, complex-script)
+        rPr = run._r.get_or_add_rPr()
+        rFonts = rPr.find(qn("w:rFonts"))
+        if rFonts is None:
+            rFonts = OxmlElement("w:rFonts")
+            rPr.insert(0, rFonts)
+        for attr in ("w:ascii", "w:hAnsi", "w:cs"):
+            rFonts.set(qn(attr), "David")
+
+    def _heading_new(text, level):
+        p   = doc.add_paragraph()
+        run = p.add_run(text)
+        _set_font(run, size_pt=(36 if level == 1 else 30), bold=True, color_hex="1F3864")
+        _rtl_right(p)
+        return p
+
+    def _para(text, size_pt=24):
+        p   = doc.add_paragraph()
+        run = p.add_run(text)
+        _set_font(run, size_pt=size_pt)
+        _rtl_right(p)
+        return p
 
     def _cell_bg(cell, hex_color):
-        """Apply a solid background fill to a table cell."""
         tc   = cell._tc
         tcPr = tc.get_or_add_tcPr()
         shd  = OxmlElement("w:shd")
@@ -715,62 +836,169 @@ def export_lecture_docx():
         shd.set(qn("w:fill"),  hex_color)
         tcPr.append(shd)
 
+    def _cell_write(cell, text, bold=False, white_text=False, italic=False):
+        p = cell.paragraphs[0]
+        p.clear()
+        run = p.add_run(text)
+        _set_font(run, size_pt=22, bold=bold, italic=italic)
+        if white_text:
+            run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+        _rtl_right(p)
+
     def _tbl_rtl(tbl):
-        """Mark the table as right-to-left so column 0 appears on the right."""
         tblPr = tbl._tbl.tblPr
         if tblPr is None:
             tblPr = OxmlElement("w:tblPr")
             tbl._tbl.insert(0, tblPr)
         tblPr.append(OxmlElement("w:bidiVisual"))
 
-    # ── Cover page ──────────────────────────────────────────────
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run(lesson_name)
-    run.bold = True
-    run.font.size = Pt(22)
-    _rtl(p)
+    # Styled paragraph with colored background and right border
+    CONTENT_STYLES = [
+        ("📌 לדוג':",        "FEF9EC", "F39C12"),
+        ("מקרה:",            "FEF9EC", "F39C12"),
+        ("📜 לשון הסעיף:",   "EAF0FA", "2E5090"),
+        ("⚖️ פסק הדין:",     "D1FAE5", "059669"),
+        ("💭 הערת הרחבה:",   "EDE9FE", "8B5CF6"),
+        ("⚠️ חשוב לבחינה:", "FEE2E2", "DC2626"),
+        ("📌 סיכום ביניים:", "D1FAE5", "059669"),
+    ]
 
-    for line in filter(None, [
-        f"📅 תאריך: {dt_str}",
-        f"⏱️ משך: {duration}",
-        f"🎓 נושא: {subject}" if subject else "",
-    ]):
-        mp = doc.add_paragraph(line)
-        mp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        _rtl(mp)
+    def _styled_para(text, bg_hex, border_hex):
+        p   = doc.add_paragraph()
+        run = p.add_run(text)
+        _set_font(run, size_pt=24)
+        pPr = p._p.get_or_add_pPr()
+        _rtl(p)
+        shd = OxmlElement("w:shd")
+        shd.set(qn("w:val"),   "clear")
+        shd.set(qn("w:color"), "auto")
+        shd.set(qn("w:fill"),  bg_hex)
+        pPr.append(shd)
+        pBdr = OxmlElement("w:pBdr")
+        rb   = OxmlElement("w:right")
+        rb.set(qn("w:val"),   "single")
+        rb.set(qn("w:sz"),    "24")
+        rb.set(qn("w:space"), "4")
+        rb.set(qn("w:color"), border_hex)
+        pBdr.append(rb)
+        pPr.append(pBdr)
+        ind = OxmlElement("w:ind")
+        ind.set(qn("w:right"), "180")
+        pPr.append(ind)
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        return p
+
+    def _render_content(text):
+        for line in text.split("\n"):
+            if not line.strip():
+                continue
+            matched = False
+            for prefix, bg, border in CONTENT_STYLES:
+                if line.startswith(prefix):
+                    _styled_para(line, bg, border)
+                    matched = True
+                    break
+            if not matched:
+                _para(line)
+
+    # ── Cover page ──────────────────────────────────────────────
+    cover_p = doc.add_paragraph()
+    cover_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    cover_run = cover_p.add_run(lesson_name)
+    _set_font(cover_run, size_pt=60, bold=True, color_hex="1F3864")
+    _rtl(cover_p)
+
+    if subject:
+        sub_p   = doc.add_paragraph()
+        sub_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        sub_run = sub_p.add_run(subject)
+        _set_font(sub_run, size_pt=36, color_hex="2E5090")
+        _rtl(sub_p)
+
+    meta_parts = []
+    if dt_str:   meta_parts.append(f"📅 תאריך: {dt_str}")
+    if duration: meta_parts.append(f"⏱️ משך: {duration}")
+    if meta_parts:
+        meta_p = doc.add_paragraph("   ".join(meta_parts))
+        meta_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _rtl(meta_p)
 
     doc.add_page_break()
 
-    # ── Body sections ────────────────────────────────────────────
+    # ── Body sections with inline styled boxes ───────────────────
     for sec in structured.get("sections", []):
-        _heading(sec.get("heading", ""), level=min(sec.get("level", 1), 2))
+        _heading_new(sec.get("heading", ""), level=min(sec.get("level", 1), 2))
         content = sec.get("content", "")
         if content:
-            cp = doc.add_paragraph(content)
-            _rtl(cp)
+            _render_content(content)
+
+    # ── Comparison tables ────────────────────────────────────────
+    comparison_tables = structured.get("comparison_tables", [])
+    if comparison_tables:
+        _heading_new("📊 טבלאות השוואה", 1)
+        for ct in comparison_tables:
+            _heading_new(ct.get("title", ""), 2)
+            columns   = ct.get("columns", [])
+            rows_data = ct.get("rows", [])
+            if not columns:
+                continue
+            tbl = doc.add_table(rows=1, cols=len(columns))
+            tbl.style = "Table Grid"
+            _tbl_rtl(tbl)
+            for j, col_name in enumerate(columns):
+                _cell_write(tbl.rows[0].cells[j], col_name, bold=True, white_text=True)
+                _cell_bg(tbl.rows[0].cells[j], "1F3864")
+            for i, row_data in enumerate(rows_data):
+                tbl_row = tbl.add_row().cells
+                bg = "F2F6FC" if i % 2 == 0 else "FFFFFF"
+                for j, val in enumerate(row_data):
+                    _cell_write(tbl_row[j], str(val) if val else "")
+                    _cell_bg(tbl_row[j], bg)
+            doc.add_paragraph("")
+
+    # ── Scales ───────────────────────────────────────────────────
+    scales = structured.get("scales", [])
+    if scales:
+        _heading_new("📊 סולמות", 1)
+        for scale in scales:
+            _heading_new(scale.get("title", ""), 2)
+            levels_list = scale.get("levels", [])
+            if not levels_list:
+                continue
+            n   = len(levels_list)
+            tbl = doc.add_table(rows=n, cols=2)
+            tbl.style = "Table Grid"
+            _tbl_rtl(tbl)
+            for i, lv in enumerate(levels_list):
+                frac  = i / max(n - 1, 1)
+                r_val = int(0x1F + (0x44 - 0x1F) * frac)
+                g_val = int(0x38 + (0x72 - 0x38) * frac)
+                b_val = int(0x64 + (0xC4 - 0x64) * frac)
+                row   = tbl.rows[i].cells
+                _cell_write(row[0], lv.get("name", ""), bold=True, white_text=True)
+                _cell_bg(row[0], f"{r_val:02X}{g_val:02X}{b_val:02X}")
+                _cell_write(row[1], lv.get("description", ""))
+                _cell_bg(row[1], "EAF0FA")
+            doc.add_paragraph("")
 
     # ── Important moments ────────────────────────────────────────
     moments = structured.get("important_moments", [])
     if moments:
-        _heading("⭐ רגעים חשובים", level=1)
+        _heading_new("⭐ רגעים חשובים", 1)
         for m in moments:
-            mp = doc.add_paragraph()
-            run = mp.add_run(m)
-            run.bold = True
-            run.font.color.rgb = RGBColor(0xB8, 0x86, 0x00)
-            _rtl(mp)
+            p   = doc.add_paragraph()
+            run = p.add_run(m)
+            _set_font(run, size_pt=24, bold=True, color_hex="B88600")
+            _rtl_right(p)
 
     # ── Concepts table ───────────────────────────────────────────
-    # RTL order: col 0 (right) = מושג, col 1 (middle) = הגדרה, col 2 (left) = דוגמה
     concepts = structured.get("concepts", [])
     if concepts:
-        _heading("💡 טבלת מושגים", level=1)
+        _heading_new("💡 טבלת מושגים", 1)
         tbl = doc.add_table(rows=1, cols=3)
         tbl.style = "Table Grid"
         _tbl_rtl(tbl)
-        hdr = tbl.rows[0].cells
-        for cell, title in zip(hdr, ["מושג", "הגדרה", "דוגמה"]):
+        for cell, title in zip(tbl.rows[0].cells, ["מושג", "הגדרה", "דוגמה"]):
             _cell_write(cell, title, bold=True, white_text=True)
             _cell_bg(cell, "1E3A5F")
         for c in concepts:
@@ -783,81 +1011,93 @@ def export_lecture_docx():
             _cell_bg(row[2], "FEF9EC")
         doc.add_paragraph("")
 
-    # ── Case-law table ───────────────────────────────────────────
-    # RTL order: col 0 (right) = שם התיק, col 1 = עיקרון, col 2 (left) = רלוונטיות
+    # ── Case law — vertical per case ─────────────────────────────
     case_law = structured.get("case_law", [])
     if case_law:
-        _heading("⚖️ טבלת פסיקה", level=1)
-        tbl = doc.add_table(rows=1, cols=3)
-        tbl.style = "Table Grid"
-        _tbl_rtl(tbl)
-        hdr = tbl.rows[0].cells
-        for cell, title in zip(hdr, ["שם התיק", "עיקרון", "רלוונטיות"]):
-            _cell_write(cell, title, bold=True, white_text=True)
-            _cell_bg(cell, "1E3A5F")
+        _heading_new("⚖️ פסיקה", 1)
+        fields = [
+            ("עובדות",              "facts"),
+            ("טענות הצדדים",        "arguments"),
+            ("הכרעת בית המשפט",    "ruling"),
+            ("ההלכה / העיקרון",    "principle"),
+            ("רלוונטיות",           "relevance"),
+        ]
         for c in case_law:
-            row = tbl.add_row().cells
-            _cell_write(row[0], c.get("name", ""),      bold=True)
-            _cell_bg(row[0], "EAF0FA")
-            _cell_write(row[1], c.get("principle", ""))
-            _cell_bg(row[1], "F2F6FC")
-            _cell_write(row[2], c.get("relevance", ""))
-            _cell_bg(row[2], "F8FAFE")
-        doc.add_paragraph("")
+            tbl = doc.add_table(rows=6, cols=2)
+            tbl.style = "Table Grid"
+            _tbl_rtl(tbl)
+            title_cells = tbl.rows[0].cells
+            title_cells[0].merge(title_cells[1])
+            _cell_write(title_cells[0], c.get("name", ""), bold=True, white_text=True)
+            _cell_bg(title_cells[0], "1F3864")
+            for i, (label, key) in enumerate(fields):
+                row = tbl.rows[i + 1].cells
+                _cell_write(row[0], label, bold=True)
+                _cell_bg(row[0], "EAF0FA")
+                _cell_write(row[1], c.get(key, ""))
+                _cell_bg(row[1], "F8FAFE")
+            doc.add_paragraph("")
 
-    # ── Statutes table ───────────────────────────────────────────
-    # RTL order: col 0 (right) = שם החוק, col 1 = סעיף, col 2 (left) = תוכן
+    # ── Statutes ─────────────────────────────────────────────────
     statutes = structured.get("statutes", [])
     if statutes:
-        _heading("📜 סעיפי חוק", level=1)
-        tbl = doc.add_table(rows=1, cols=3)
-        tbl.style = "Table Grid"
-        _tbl_rtl(tbl)
-        hdr = tbl.rows[0].cells
-        for cell, title in zip(hdr, ["שם החוק", "סעיף", "תוכן"]):
-            _cell_write(cell, title, bold=True, white_text=True)
-            _cell_bg(cell, "4A235A")
+        _heading_new("📜 סעיפי חוק", 1)
         for s in statutes:
-            row = tbl.add_row().cells
-            _cell_write(row[0], s.get("law", ""),     bold=True)
-            _cell_bg(row[0], "F3E8FA")
-            _cell_write(row[1], s.get("section", ""))
-            _cell_bg(row[1], "F9F2FD")
-            _cell_write(row[2], s.get("content", ""))
-            _cell_bg(row[2], "FDF6FF")
-        doc.add_paragraph("")
+            tbl = doc.add_table(rows=3, cols=1)
+            tbl.style = "Table Grid"
+            _tbl_rtl(tbl)
+            _cell_write(tbl.rows[0].cells[0],
+                        f"{s.get('law','')} — {s.get('section','')}", bold=True, white_text=True)
+            _cell_bg(tbl.rows[0].cells[0], "1F3864")
+            _cell_write(tbl.rows[1].cells[0],
+                        "📜 לשון הסעיף: " + s.get("text", ""), italic=True)
+            _cell_bg(tbl.rows[1].cells[0], "EAF0FA")
+            _cell_write(tbl.rows[2].cells[0],
+                        "🔍 ניתוח: " + s.get("analysis", ""))
+            _cell_bg(tbl.rows[2].cells[0], "F2F6FC")
+            doc.add_paragraph("")
+
+    # ── Exam warnings ────────────────────────────────────────────
+    exam_warnings = structured.get("exam_warnings", [])
+    if exam_warnings:
+        _heading_new("⚠️ אזהרות לבחינה", 1)
+        for w in exam_warnings:
+            _styled_para("⚠️ " + w, "FEE2E2", "DC2626")
 
     # ── Related topics ───────────────────────────────────────────
     related = structured.get("related_topics", "")
     if related:
-        _heading("🔗 קשרים לנושאים אחרים", level=1)
-        rp = doc.add_paragraph(related)
-        _rtl(rp)
+        _heading_new("🔗 קשרים לנושאים אחרים", 1)
+        _para(related)
 
     # ── Instructor emphasis ──────────────────────────────────────
     emphasis = structured.get("instructor_emphasis", [])
     if emphasis:
-        _heading("📍 נקודות לבדיקה", level=1)
+        _heading_new("📍 נקודות לבדיקה", 1)
         for e in emphasis:
-            ep = doc.add_paragraph(e, style="List Bullet")
-            _rtl(ep)
+            _para("• " + e)
 
     # ── Key points summary ───────────────────────────────────────
     key_points = structured.get("key_points", [])
     if key_points:
-        _heading("📌 5 נקודות עיקריות מהשיעור", level=1)
+        _heading_new("📌 5 נקודות עיקריות מהשיעור", 1)
         for i, kp in enumerate(key_points[:5], 1):
-            kpp = doc.add_paragraph(f"{i}. {kp}")
-            _rtl(kpp)
+            _para(f"{i}. {kp}")
+
+    # ── Transcript unclear zones ─────────────────────────────────
+    unclear = structured.get("transcript_unclear_zones", [])
+    if unclear:
+        _heading_new("❓ אזורי תמלול לא ברורים", 1)
+        for zone in unclear:
+            _styled_para("❓ " + zone, "F3F4F6", "9CA3AF")
 
     # ── Fallback: plain summary ──────────────────────────────────
     if not structured.get("sections") and summary_txt:
-        _heading("סיכום", level=1)
+        _heading_new("סיכום", 1)
         for line in summary_txt.split("\n"):
             clean = line.strip("*").strip()
             if clean:
-                lp = doc.add_paragraph(clean)
-                _rtl(lp)
+                _para(clean)
 
     buf = io.BytesIO()
     doc.save(buf)
