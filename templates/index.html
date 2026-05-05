@@ -334,6 +334,35 @@
                     resize:vertical; margin-bottom:14px; }
     .rec-live-box:focus { outline:none; border-color:var(--lt); }
 
+    .rec-live-box-section { margin-bottom: 12px; }
+    .rec-live-box-section label {
+      font-size: .85rem;
+      color: var(--lt);
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .rec-live-transcript {
+      width: 100%;
+      min-height: 70px;
+      background: rgba(74,144,217,.08);
+      border: 1px solid rgba(74,144,217,.3);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 10px 14px;
+      font-size: .88rem;
+      font-family: inherit;
+      line-height: 1.6;
+      resize: none;
+    }
+    .rec-edit-hint {
+      font-size: .8rem;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 12px;
+      font-style: italic;
+    }
+
     /* Transcript download row */
     .rec-dl-row { display:flex; gap:8px; margin-bottom:10px; }
     .rec-dl { background:rgba(39,174,96,.1); color:#6fcf97; border-color:rgba(39,174,96,.4); flex:1; }
@@ -615,8 +644,18 @@
       <span style="color:#ff7043;font-weight:600;font-size:.93rem;" id="rec-lesson-label"></span>
     </div>
     <div class="rec-timer" id="rec-timer-el">00:00:00</div>
-    <textarea class="rec-live-box" id="rec-transcript"
-              placeholder="התמלול יופיע כאן בזמן אמת בזמן הקלטה..."></textarea>
+    <div class="rec-live-box-section">
+      <label>🎙️ תמלול חי (זמן אמת)</label>
+      <textarea class="rec-live-transcript" id="rec-live-transcript" readonly
+                placeholder="תמלול חי יופיע כאן..."></textarea>
+    </div>
+    <div class="rec-live-box-section">
+      <label>✏️ התמלול המלא (ניתן לעריכה)</label>
+      <textarea class="rec-live-box" id="rec-transcript"
+                placeholder="התמלול המלא יצטבר כאן. ניתן לערוך תוך כדי הקלטה..."
+                style="min-height:250px;"></textarea>
+      <div class="rec-edit-hint">💡 ניתן לערוך את התמלול תוך כדי הקלטה. מילים חדשות יתווספו לסוף אוטומטית כל 5 שניות.</div>
+    </div>
     <div class="rec-dl-row">
       <button class="rec-ctrl-btn rec-dl" id="rec-dl-txt-live">📥 הורד כ-TXT</button>
       <button class="rec-ctrl-btn rec-dl" id="rec-dl-docx-live">📥 הורד כ-Word</button>
@@ -1204,6 +1243,7 @@ const recNewBtn            = $("rec-new-btn");
 const recModeBadge         = $("rec-mode-badge");
 const recBrowserHint       = $("rec-browser-hint");
 const recTranscriptDone    = $("rec-transcript-done");
+const recLiveTranscript    = $("rec-live-transcript");
 const recDlTxtLive         = $("rec-dl-txt-live");
 const recDlDocxLive        = $("rec-dl-docx-live");
 const recDlTxtDone         = $("rec-dl-txt-done");
@@ -1215,9 +1255,9 @@ let recElapsed        = 0;
 let recPaused         = false;
 let recShouldRestart  = false;
 let recognition       = null;
-let recTranscriptFull = "";
-let recTranscriptInterim = "";
-let recUserEdited     = false;
+let recCommittedText  = "";
+let recPendingText    = "";
+let recCommitInterval = null;
 let recStructured     = null;
 let recSummaryText    = "";
 let recCurrentLesson  = "";
@@ -1249,13 +1289,6 @@ const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.
   }
   recBrowserHint.style.display = "block";
 })();
-
-// ── User-edit detection ───────────────────────────────────────
-recTranscript.addEventListener("input", () => {
-  recUserEdited        = true;
-  recTranscriptFull    = recTranscript.value;
-  recTranscriptInterim = "";
-});
 
 // ── Transcript download helpers ───────────────────────────────
 function dlTranscriptTxt(text) {
@@ -1331,11 +1364,10 @@ recLessonName.addEventListener("input", () => recLessonName.classList.remove("in
 
 async function recBeginRecording() {
   // Reset state
-  recElapsed           = 0;
-  recTranscriptFull    = "";
-  recTranscriptInterim = "";
-  recUserEdited        = false;
-  recPaused            = false;
+  recElapsed        = 0;
+  recCommittedText  = "";
+  recPendingText    = "";
+  recPaused         = false;
   recStructured        = null;
   recSummaryText       = "";
   recAudioContext      = null;
@@ -1381,14 +1413,15 @@ async function recBeginRecording() {
           let interim = "";
           for (let i = e.resultIndex; i < e.results.length; i++) {
             const t = e.results[i][0].transcript;
-            if (e.results[i].isFinal) recTranscriptFull += t + " ";
-            else interim += t;
+            if (e.results[i].isFinal) {
+              recPendingText += t + " ";
+            } else {
+              interim += t;
+            }
           }
-          recTranscriptInterim = interim;
-          if (!recUserEdited) {
-            recTranscript.value = recTranscriptFull + interim;
-            recTranscript.scrollTop = recTranscript.scrollHeight;
-          }
+          const liveText = (recPendingText + interim).trim();
+          const last200 = liveText.length > 200 ? "..." + liveText.slice(-200) : liveText;
+          recLiveTranscript.value = last200;
         };
 
         recognition.onerror = (e) => {
@@ -1427,9 +1460,10 @@ async function recBeginRecording() {
   }
 
   recShowState("active");
-  recLessonLabel.textContent = recCurrentLesson;
-  recTimerEl.textContent     = "00:00:00";
-  recTranscript.value        = "";
+  recLessonLabel.textContent  = recCurrentLesson;
+  recTimerEl.textContent      = "00:00:00";
+  recTranscript.value         = "";
+  recLiveTranscript.value     = "";
 
   // Mode badge
   recModeBadge.textContent = recMode === "screen" ? "🖥️ שיעור מוקלט" : "🎙️ מיקרופון";
@@ -1463,14 +1497,15 @@ async function recBeginRecording() {
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) recTranscriptFull += t + " ";
-        else interim += t;
+        if (e.results[i].isFinal) {
+          recPendingText += t + " ";
+        } else {
+          interim += t;
+        }
       }
-      recTranscriptInterim = interim;
-      if (!recUserEdited) {
-        recTranscript.value = recTranscriptFull + interim;
-        recTranscript.scrollTop = recTranscript.scrollHeight;
-      }
+      const liveText = (recPendingText + interim).trim();
+      const last200 = liveText.length > 200 ? "..." + liveText.slice(-200) : liveText;
+      recLiveTranscript.value = last200;
     };
 
     recognition.onerror = (e) => {
@@ -1492,6 +1527,24 @@ async function recBeginRecording() {
     recShouldRestart = true;
     recognition.start();
   }
+
+  recCommitInterval = setInterval(() => {
+    if (recPendingText.trim() && !recPaused) {
+      const cursorPos = recTranscript.selectionStart;
+      const wasAtEnd  = cursorPos === recTranscript.value.length;
+
+      recTranscript.value += recPendingText;
+      recCommittedText     = recTranscript.value;
+      recPendingText       = "";
+
+      if (wasAtEnd) {
+        recTranscript.scrollTop = recTranscript.scrollHeight;
+        recTranscript.setSelectionRange(recTranscript.value.length, recTranscript.value.length);
+      } else {
+        recTranscript.setSelectionRange(cursorPos, cursorPos);
+      }
+    }
+  }, 5000);
 }
 
 // ── Pause / Resume ────────────────────────────────────────────
@@ -1501,6 +1554,7 @@ recPauseBtn.addEventListener("click", () => {
     recShouldRestart = false;
     recognition.stop();
     if (recAudioContext) recAudioContext.suspend();
+    if (recCommitInterval) { clearInterval(recCommitInterval); recCommitInterval = null; }
     recPauseBtn.textContent = "▶️ המשך";
     recPauseBtn.style.borderColor = "var(--green)";
     recPauseBtn.style.color = "#6fcf97";
@@ -1508,6 +1562,21 @@ recPauseBtn.addEventListener("click", () => {
     recShouldRestart = true;
     if (recAudioContext) recAudioContext.resume();
     try { recognition.start(); } catch (_) {}
+    recCommitInterval = setInterval(() => {
+      if (recPendingText.trim() && !recPaused) {
+        const cursorPos = recTranscript.selectionStart;
+        const wasAtEnd  = cursorPos === recTranscript.value.length;
+        recTranscript.value += recPendingText;
+        recCommittedText     = recTranscript.value;
+        recPendingText       = "";
+        if (wasAtEnd) {
+          recTranscript.scrollTop = recTranscript.scrollHeight;
+          recTranscript.setSelectionRange(recTranscript.value.length, recTranscript.value.length);
+        } else {
+          recTranscript.setSelectionRange(cursorPos, cursorPos);
+        }
+      }
+    }, 5000);
     recPauseBtn.textContent = "⏸️ השהה";
     recPauseBtn.style.borderColor = "";
     recPauseBtn.style.color = "";
@@ -1516,11 +1585,7 @@ recPauseBtn.addEventListener("click", () => {
 
 // ── Mark important moment ─────────────────────────────────────
 recMarkBtn.addEventListener("click", () => {
-  recTranscriptFull += " [⭐ רגע חשוב] ";
-  if (!recUserEdited) {
-    recTranscript.value = recTranscriptFull + recTranscriptInterim;
-    recTranscript.scrollTop = recTranscript.scrollHeight;
-  }
+  recPendingText += " [⭐ רגע חשוב] ";
   const orig = recMarkBtn.textContent;
   recMarkBtn.textContent = "✅ סומן!";
   setTimeout(() => recMarkBtn.textContent = orig, 1500);
@@ -1529,13 +1594,18 @@ recMarkBtn.addEventListener("click", () => {
 // ── Finish: stop recording → show type chooser ────────────────
 recFinishBtn.addEventListener("click", () => {
   clearInterval(recTimerInterval); recTimerInterval = null;
+  if (recCommitInterval) { clearInterval(recCommitInterval); recCommitInterval = null; }
   recShouldRestart = false;
   if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
   if (recAudioStream) { recAudioStream.getTracks().forEach(t => t.stop()); recAudioStream = null; }
   if (recMicStream)   { recMicStream.getTracks().forEach(t => t.stop());   recMicStream   = null; }
   if (recAudioContext) { recAudioContext.close(); recAudioContext = null; }
 
-  const finalTranscript = (recTranscriptFull + recTranscriptInterim).trim();
+  if (recPendingText.trim()) {
+    recTranscript.value += recPendingText;
+    recPendingText = "";
+  }
+  const finalTranscript = recTranscript.value.trim();
   if (!finalTranscript) {
     recShowError("לא הוקלט תמלול — ודא שהמיקרופון פועל ואישרת הרשאה.");
     return;
@@ -1545,7 +1615,7 @@ recFinishBtn.addEventListener("click", () => {
 
 // ── Summarize with chosen type ────────────────────────────────
 async function doRecSummarize(summaryType) {
-  const finalTranscript = (recTranscriptFull + recTranscriptInterim).trim();
+  const finalTranscript = recTranscript.value.trim();
   const durationStr = fmtHMS(recElapsed);
   recShowState("processing");
 
@@ -1583,7 +1653,7 @@ async function doRecSummarize(summaryType) {
 
     recSummaryEl.innerHTML = md(data.summary);
 
-    const finalTxt = (recTranscriptFull + recTranscriptInterim).trim();
+    const finalTxt = recTranscript.value.trim();
     recTranscriptDone.value = finalTxt;
     try { localStorage.setItem("transcript_" + recCurrentLesson, finalTxt); } catch (_) {}
 
@@ -1612,6 +1682,7 @@ recCancelBtn.addEventListener("click", () => {
 
   // Stop everything
   clearInterval(recTimerInterval); recTimerInterval = null;
+  if (recCommitInterval) { clearInterval(recCommitInterval); recCommitInterval = null; }
   recShouldRestart = false;
   if (recognition) { try { recognition.stop(); } catch (_) {} recognition = null; }
   if (recAudioStream) { recAudioStream.getTracks().forEach(t => t.stop()); recAudioStream = null; }
@@ -1619,10 +1690,10 @@ recCancelBtn.addEventListener("click", () => {
   if (recAudioContext) { recAudioContext.close(); recAudioContext = null; }
 
   // Clear all transcript data
-  recTranscriptFull    = "";
-  recTranscriptInterim = "";
-  recUserEdited        = false;
+  recCommittedText     = "";
+  recPendingText       = "";
   recTranscript.value  = "";
+  recLiveTranscript.value = "";
   recElapsed           = 0;
   recMarkedMoments     = [];
   recTimerEl.textContent = "00:00:00";
