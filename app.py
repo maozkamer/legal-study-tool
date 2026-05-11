@@ -498,8 +498,16 @@ def export_docx():
     structured = data.get("structured") or {}
     if isinstance(structured, str):
         try:
-            structured = json.loads(structured)
+            clean = structured.strip()
+            if clean.startswith("```json"):
+                clean = clean[7:]
+            if clean.startswith("```"):
+                clean = clean[3:]
+            if clean.endswith("```"):
+                clean = clean[:-3]
+            structured = json.loads(clean.strip())
         except (json.JSONDecodeError, ValueError):
+            log.warning("Failed to parse structured JSON in export-docx, falling back")
             structured = {}
 
     doc = Document()
@@ -539,6 +547,58 @@ def export_docx():
             tblPr = OxmlElement("w:tblPr")
             tbl._tbl.insert(0, tblPr)
         tblPr.append(OxmlElement("w:bidiVisual"))
+
+    def _render_md_line(line):
+        """Render one markdown line into the doc with proper Word formatting."""
+        import re as _re
+        stripped = line.strip()
+        if not stripped:
+            return
+
+        # Heading markers
+        if stripped.startswith("####"):
+            _heading(stripped.lstrip("#").strip(), level=3); return
+        if stripped.startswith("###"):
+            _heading(stripped.lstrip("#").strip(), level=2); return
+        if stripped.startswith("##"):
+            _heading(stripped.lstrip("#").strip(), level=2); return
+        if stripped.startswith("#"):
+            _heading(stripped.lstrip("#").strip(), level=1); return
+
+        # Detect if line is a section header (starts/ends with **)
+        if _re.match(r"^\*\*[^*]+\*\*\s*:?\s*$", stripped):
+            text = _re.sub(r"\*+", "", stripped).rstrip(":").strip()
+            _heading(text, level=2); return
+
+        # Bullet points
+        if stripped.startswith(("- ", "• ", "* ")):
+            text = stripped[2:].strip()
+            p    = doc.add_paragraph(style="List Bullet")
+            _add_md_runs(p, text)
+            _rtl(p); return
+
+        # Numbered lines  e.g. "1. text" or "1) text"
+        m = _re.match(r"^(\d+)[.)]\s+(.*)", stripped)
+        if m:
+            p = doc.add_paragraph(style="List Number")
+            _add_md_runs(p, m.group(2))
+            _rtl(p); return
+
+        # Regular paragraph
+        p = doc.add_paragraph()
+        _add_md_runs(p, stripped)
+        _rtl(p)
+
+    def _add_md_runs(paragraph, text):
+        """Split text on **bold** markers and add runs."""
+        import re as _re
+        parts = _re.split(r"(\*\*[^*]+\*\*)", text)
+        for part in parts:
+            if part.startswith("**") and part.endswith("**"):
+                run = paragraph.add_run(part[2:-2])
+                run.bold = True
+            else:
+                paragraph.add_run(part)
 
     title_para = doc.add_heading(filename, level=0)
     _rtl(title_para)
@@ -620,13 +680,9 @@ def export_docx():
                 _rtl(kpp)
 
     else:
-        # ── Fallback: plain text ─────────────────────────────────
+        # ── Fallback: render markdown from Claude's plain-text summary ──
         for line in summary.split("\n"):
-            clean = line.strip("*").strip()
-            if not clean:
-                continue
-            p = doc.add_paragraph(clean)
-            _rtl(p)
+            _render_md_line(line)
 
     if notes.strip():
         doc.add_paragraph("")
@@ -776,8 +832,16 @@ def export_lecture_docx():
     structured  = data.get("structured") or {}
     if isinstance(structured, str):
         try:
-            structured = json.loads(structured)
+            clean = structured.strip()
+            if clean.startswith("```json"):
+                clean = clean[7:]
+            if clean.startswith("```"):
+                clean = clean[3:]
+            if clean.endswith("```"):
+                clean = clean[:-3]
+            structured = json.loads(clean.strip())
         except (json.JSONDecodeError, ValueError):
+            log.warning("Failed to parse structured JSON string, falling back to empty")
             structured = {}
     summary_txt = data.get("summary", "")
 
