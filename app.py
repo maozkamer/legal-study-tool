@@ -144,6 +144,27 @@ TYPE_LABELS = {
 #  Claude helper
 # ─────────────────────────────────────────────────────────────
 
+def _parse_structured(value) -> dict:
+    """Return value as a parsed dict. Handles JSON strings and markdown code blocks."""
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            clean = value.strip()
+            if clean.startswith("```json"):
+                clean = clean[7:]
+            if clean.startswith("```"):
+                clean = clean[3:]
+            if clean.endswith("```"):
+                clean = clean[:-3]
+            parsed = json.loads(clean.strip())
+            if isinstance(parsed, dict):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            log.warning("Failed to parse structured JSON, falling back to empty")
+    return {}
+
+
 def _claude(prompt: str, max_tokens: int = 2048) -> str:
     response = client.messages.create(
         model=CLAUDE_MODEL,
@@ -495,20 +516,7 @@ def export_docx():
     summary    = data.get("summary", "")
     filename   = data.get("filename", "סיכום")
     notes      = data.get("notes", "")
-    structured = data.get("structured") or {}
-    if isinstance(structured, str):
-        try:
-            clean = structured.strip()
-            if clean.startswith("```json"):
-                clean = clean[7:]
-            if clean.startswith("```"):
-                clean = clean[3:]
-            if clean.endswith("```"):
-                clean = clean[:-3]
-            structured = json.loads(clean.strip())
-        except (json.JSONDecodeError, ValueError):
-            log.warning("Failed to parse structured JSON in export-docx, falling back")
-            structured = {}
+    structured = _parse_structured(data.get("structured"))
 
     doc = Document()
 
@@ -829,20 +837,7 @@ def export_lecture_docx():
     dt_str      = data.get("date", "")
     duration    = data.get("duration", "")
     subject     = data.get("subject", "")
-    structured  = data.get("structured") or {}
-    if isinstance(structured, str):
-        try:
-            clean = structured.strip()
-            if clean.startswith("```json"):
-                clean = clean[7:]
-            if clean.startswith("```"):
-                clean = clean[3:]
-            if clean.endswith("```"):
-                clean = clean[:-3]
-            structured = json.loads(clean.strip())
-        except (json.JSONDecodeError, ValueError):
-            log.warning("Failed to parse structured JSON string, falling back to empty")
-            structured = {}
+    structured  = _parse_structured(data.get("structured"))
     summary_txt = data.get("summary", "")
 
     doc = Document()
