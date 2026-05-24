@@ -165,6 +165,87 @@ def _parse_structured(value) -> dict:
     return {}
 
 
+def _parse_claude_json(raw: str):
+    """פרסור חזק של JSON מתשובת Claude: code fences, prose מקדים, ו-JSON חתוך."""
+    import re as _re
+    text = raw.strip()
+    fence = _re.match(r"^```(?:json)?\s*\n?(.*?)\n?```$", text, _re.DOTALL)
+    if fence:
+        text = fence.group(1).strip()
+    start = text.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    in_str = False
+    esc = False
+    end = -1
+    for i in range(start, len(text)):
+        ch = text[i]
+        if esc:
+            esc = False
+            continue
+        if ch == "\\":
+            esc = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                break
+    if end != -1:
+        try:
+            return json.loads(text[start:end])
+        except (json.JSONDecodeError, ValueError):
+            pass
+    repaired = _repair_truncated_json(text[start:])
+    if repaired is not None:
+        try:
+            return json.loads(repaired)
+        except (json.JSONDecodeError, ValueError):
+            return None
+    return None
+
+
+def _repair_truncated_json(s: str):
+    """תיקון best-effort של JSON שנחתך באמצע (סוגר מחרוזות ומכלים פתוחים)."""
+    stack = []
+    in_str = False
+    esc = False
+    for ch in s:
+        if esc:
+            esc = False
+            continue
+        if ch == "\\":
+            esc = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch in "{[":
+            stack.append(ch)
+        elif ch in "}]":
+            if stack:
+                stack.pop()
+    out = s.rstrip()
+    if in_str:
+        out += '"'
+    out = out.rstrip()
+    if out.endswith(","):
+        out = out[:-1]
+    for opener in reversed(stack):
+        out += "}" if opener == "{" else "]"
+    return out
+
+
 def _claude(prompt: str, max_tokens: int = 2048) -> str:
     response = client.messages.create(
         model=CLAUDE_MODEL,
@@ -777,10 +858,10 @@ def summarize_lecture():
                 "תמליל השיעור:\n" + transcript,
             )
 
-        raw        = _claude(prompt, max_tokens=4096)
-        js         = raw[raw.find("{") : raw.rfind("}") + 1]
-        js         = js.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-        structured = json.loads(js)
+        raw        = _claude(prompt, max_tokens=8192)
+        structured = _parse_claude_json(raw)
+        if structured is None:
+            raise ValueError("could not parse structured JSON")
 
     except (json.JSONDecodeError, ValueError):
         log.warning("JSON parse failed — returning plain summary")
@@ -871,6 +952,11 @@ def export_lecture_docx():
             rPr.insert(0, rFonts)
         for attr in ("w:ascii", "w:hAnsi", "w:cs"):
             rFonts.set(qn(attr), "David")
+        # RTL ברמת ה-run — חיוני לעברית מעורבת עם מספרים/אנגלית
+        if rPr.find(qn("w:rtl")) is None:
+            rtl_el = OxmlElement("w:rtl")
+            rtl_el.set(qn("w:val"), "1")
+            rPr.append(rtl_el)
 
     def _heading_new(text, level):
         p   = doc.add_paragraph()
@@ -1150,13 +1236,61 @@ def export_lecture_docx():
         for zone in unclear:
             _styled_para("❓ " + zone, "F3F4F6", "9CA3AF")
 
-    # ── Fallback: plain summary ──────────────────────────────────
+    # ── Fallback: render markdown properly into Word ────────────
     if not structured.get("sections") and summary_txt:
-        _heading_new("סיכום", 1)
+        import re as _re_fb
+
+        def _fb_inline(paragraph, text):
+            for part in _re_fb.split(r"(\*\*[^*]+\*\*)", text):
+                if part.startswith("**") and part.endswith("**"):
+                    r = paragraph.add_run(part[2:-2])
+                    _set_font(r, size_pt=24, bold=True)
+                elif part:
+                    r = paragraph.add_run(part)
+                    _set_font(r, size_pt=24, bold=False)
+
         for line in summary_txt.split("\n"):
-            clean = line.strip("*").strip()
-            if clean:
-                _para(clean)
+            line = line.strip()
+            if not line or line == "---":
+                continue
+            if line.startswith("#### "):
+                p = doc.add_paragraph()
+                r = p.add_run(line[5:].strip())
+                _set_font(r, size_pt=24, bold=True, color_hex="5B9BD5")
+                _rtl_right(p)
+            elif line.startswith("### "):
+                p = doc.add_paragraph()
+                r = p.add_run(line[4:].strip())
+                _set_font(r, size_pt=26, bold=True, color_hex="4472C4")
+                _rtl_right(p)
+            elif line.startswith("## "):
+                p = doc.add_paragraph()
+                r = p.add_run(line[3:].strip())
+                _set_font(r, size_pt=30, bold=True, color_hex="2E5090")
+                _rtl_right(p)
+            elif line.startswith("# "):
+                p = doc.add_paragraph()
+                r = p.add_run(line[2:].strip())
+                _set_font(r, size_pt=36, bold=True, color_hex="1F3864")
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                _rtl(p)
+            elif _re_fb.match(r"^\d+[.)]\s+", line):
+                m = _re_fb.match(r"^(\d+)[.)]\s+(.*)", line)
+                p = doc.add_paragraph()
+                nr = p.add_run(m.group(1) + ". ")
+                _set_font(nr, size_pt=24, bold=True)
+                _fb_inline(p, m.group(2))
+                _rtl_right(p)
+            elif line.startswith(("- ", "• ", "* ")):
+                p = doc.add_paragraph()
+                br = p.add_run("• ")
+                _set_font(br, size_pt=24)
+                _fb_inline(p, line[2:].strip())
+                _rtl_right(p)
+            else:
+                p = doc.add_paragraph()
+                _fb_inline(p, line)
+                _rtl_right(p)
 
     buf = io.BytesIO()
     doc.save(buf)
