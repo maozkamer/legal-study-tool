@@ -859,12 +859,16 @@ def summarize_lecture():
             )
 
         raw        = _claude(prompt, max_tokens=8192)
+        log.info("Claude raw response length: %d chars", len(raw))
+        log.info("Claude raw first 300 chars: %s", repr(raw[:300]))
+        log.info("Claude raw last 200 chars: %s", repr(raw[-200:]))
         structured = _parse_claude_json(raw)
         if structured is None:
+            log.warning("_parse_claude_json returned None — raw starts with: %s", repr(raw[:150]))
             raise ValueError("could not parse structured JSON")
 
-    except (json.JSONDecodeError, ValueError):
-        log.warning("JSON parse failed — returning plain summary")
+    except (json.JSONDecodeError, ValueError) as e:
+        log.warning("JSON parse failed (%s) — returning plain summary", e)
         structured = None
     except Exception as exc:
         log.error("Claude error in summarize_lecture: %s", exc)
