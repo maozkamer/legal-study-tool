@@ -604,20 +604,41 @@ def export_docx():
 
     doc = Document()
 
-    def _heading(text, level):
-        h = doc.add_heading(text, level=level)
-        _rtl(h)
-        return h
+    _HEADING_STYLE = {
+        0: (40, "1F3864"),
+        1: (32, "1F3864"),
+        2: (26, "2E5090"),
+        3: (22, "2E5090"),
+    }
 
-    def _add_md_runs(paragraph, text):
+    def _heading(text, level):
+        p    = doc.add_paragraph()
+        run  = p.add_run(text)
+        size, color = _HEADING_STYLE.get(level, (22, "2E5090"))
+        _set_font(run, size_pt=size, bold=True, color_hex=color)
+        _rtl_right(p)
+        return p
+
+    def _add_md_runs(paragraph, text, size_pt=24):
         import re as _re
         parts = _re.split(r"(\*\*[^*]+\*\*)", text)
         for part in parts:
+            if not part:
+                continue
             if part.startswith("**") and part.endswith("**"):
                 run = paragraph.add_run(part[2:-2])
-                run.bold = True
+                _set_font(run, size_pt=size_pt, bold=True)
             else:
-                paragraph.add_run(part)
+                run = paragraph.add_run(part)
+                _set_font(run, size_pt=size_pt, bold=False)
+
+    # Matches lines like "📋 **פרטי התיק:** תוכן" — an optional leading emoji/symbol,
+    # a bold label, an optional colon, and optional trailing content on the same line.
+    # Claude's summary prompts always prefix section labels with an emoji, so a strict
+    # "line is only **label**" match never fired and every section collapsed into a
+    # plain inline-bold paragraph instead of a real heading.
+    import re as _label_re_mod
+    _LABEL_LINE_RE = _label_re_mod.compile(r"^([^\w*]{0,4})\*\*([^*]+?)\*\*\s*:?\s*(.*)$")
 
     def _render_md_line(line):
         import re as _re
@@ -630,25 +651,31 @@ def export_docx():
             _heading(stripped.lstrip("#").strip(), level=2); return
         if stripped.startswith("#"):
             _heading(stripped.lstrip("#").strip(), level=1); return
-        if _re.match(r"^\*\*[^*]+\*\*\s*:?\s*$", stripped):
-            text = _re.sub(r"\*+", "", stripped).rstrip(":").strip()
-            _heading(text, level=2); return
         if stripped.startswith(("- ", "• ", "* ")):
             text = stripped[2:].strip()
             p    = doc.add_paragraph(style="List Bullet")
             _add_md_runs(p, text)
-            _rtl(p); return
+            _rtl_right(p); return
         m = _re.match(r"^(\d+)[.)]\s+(.*)", stripped)
         if m:
             p = doc.add_paragraph(style="List Number")
             _add_md_runs(p, m.group(2))
-            _rtl(p); return
+            _rtl_right(p); return
+        m = _LABEL_LINE_RE.match(stripped)
+        if m:
+            emoji, label, rest = m.groups()
+            heading_text = (emoji.strip() + " " + label.strip()).strip()
+            _heading(heading_text, level=2)
+            if rest.strip():
+                p = doc.add_paragraph()
+                _add_md_runs(p, rest.strip())
+                _rtl_right(p)
+            return
         p = doc.add_paragraph()
         _add_md_runs(p, stripped)
-        _rtl(p)
+        _rtl_right(p)
 
-    title_para = doc.add_heading(filename, level=0)
-    _rtl(title_para)
+    _heading(filename, level=0)
 
     for line in summary.split("\n"):
         _render_md_line(line)

@@ -264,6 +264,9 @@
                    transition:opacity .2s,transform .1s; }
     .rec-big-btn:hover { opacity:.88; }
     .rec-big-btn:active { transform:scale(.97); }
+    .rec-big-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .rec-big-btn:disabled:hover { opacity:.4; }
+    .rec-big-btn:disabled:active { transform:none; }
 
     /* Pulse dot */
     .rec-pulse { width:12px; height:12px; border-radius:50%; background:#e74c3c;
@@ -1087,22 +1090,30 @@ let recMicStream      = null;       // getUserMedia stream (screen mode only)
 // ── Browser detection ─────────────────────────────────────────
 const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
 const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+const supportsSpeechRec = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
 // Show browser-specific hint next to the screen recording button
 (function() {
-  if (isChrome) {
+  if (!supportsSpeechRec) {
+    // Safari (מק ואייפון) ודפדפנים אחרים שאינם מבוססי-Chrome אינם תומכים
+    // בזיהוי דיבור בדפדפן כלל — התכונה לא תעבוד, לכן חוסמים מראש עם הודעה ברורה
+    recBrowserHint.className = "rec-browser-hint safari";
+    recBrowserHint.innerHTML =
+      "⚠️ <strong>תמלול חי לא נתמך בדפדפן הזה" + (isSafari ? " (Safari)" : "") + ":</strong> " +
+      "אין תמיכה בזיהוי דיבור בדפדפן. יש לפתוח את האתר ב-<strong>Google Chrome</strong> כדי להקליט ולתמלל שיעור.";
+    recStartBtn.disabled = true;
+    recScreenStartBtn.disabled = true;
+    recStartBtn.title = recScreenStartBtn.title = "לא נתמך בדפדפן זה — השתמש ב-Chrome";
+  } else if (isChrome) {
     recBrowserHint.className = "rec-browser-hint chrome";
     recBrowserHint.innerHTML =
       "🖥️ <strong>Chrome:</strong> בחלון הבחירה — בחר את הטאב עם השיעור וסמן ✅ <em>Share tab audio</em><br>" +
       "💡 השתמש ברמקולים (לא אוזניות) לתמלול מיטבי";
-  } else if (isSafari) {
-    recBrowserHint.className = "rec-browser-hint safari";
-    recBrowserHint.innerHTML =
-      "📱 <strong>Safari:</strong> הפעל את השיעור ברמקול — המיקרופון יקלוט את הקול";
   } else {
     recBrowserHint.className = "rec-browser-hint other";
     recBrowserHint.innerHTML =
-      "ℹ️ לכידת אודיו מהטאב נתמכת ב-Chrome. בדפדפנים אחרים — השמע ברמקול והמיקרופון יקלוט";
+      "ℹ️ הדפדפן שלך תומך בזיהוי דיבור, אך לכידת אודיו מהטאב נתמכת רק ב-Chrome. " +
+      "במצב הקלטת מיקרופון — השמע ברמקול (לא אוזניות) והמיקרופון יקלוט.";
   }
   recBrowserHint.style.display = "block";
 })();
