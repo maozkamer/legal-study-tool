@@ -15,6 +15,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 import anthropic
+import notion_sync
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 log = logging.getLogger(__name__)
@@ -727,7 +728,8 @@ def summarize_lecture():
         except Exception as exc:
             log.error("Claude error: %s", exc)
             return jsonify({"error": f"שגיאה בסיכום: {exc}"}), 500
-        return jsonify({"summary": raw, "subject": lesson_name, "structured": None})
+        notion_page_id = notion_sync.create_lecture_page(lesson_name, lesson_name, date.today().isoformat())
+        return jsonify({"summary": raw, "subject": lesson_name, "structured": None, "notion_page_id": notion_page_id})
 
     # ── Full summary ───────────────────────────────────────────
     try:
@@ -764,7 +766,8 @@ def summarize_lecture():
         return jsonify({"error": f"שגיאה בסיכום: {exc}"}), 500
 
     if structured is None:
-        return jsonify({"summary": raw, "subject": "שיעור", "structured": None})
+        notion_page_id = notion_sync.create_lecture_page(lesson_name, lesson_name, date.today().isoformat())
+        return jsonify({"summary": raw, "subject": "שיעור", "structured": None, "notion_page_id": notion_page_id})
 
     subject = structured.get("subject", "שיעור")
 
@@ -785,19 +788,23 @@ def summarize_lecture():
         for m in structured["important_moments"]:
             lines.append(f"• {m}")
 
+    notion_page_id = notion_sync.create_lecture_page(lesson_name, subject, date.today().isoformat())
+
     return jsonify({
-        "summary":    "\n".join(lines),
-        "subject":    subject,
-        "structured": structured,
+        "summary":        "\n".join(lines),
+        "subject":        subject,
+        "structured":     structured,
+        "notion_page_id": notion_page_id,
     })
 
 
 @app.route("/export-lecture-docx", methods=["POST"])
 def export_lecture_docx():
-    data        = request.json or {}
-    lesson_name = data.get("lesson_name", "שיעור")
-    structured  = _parse_structured(data.get("structured"))
-    summary_txt = data.get("summary", "")
+    data           = request.json or {}
+    lesson_name    = data.get("lesson_name", "שיעור")
+    structured     = _parse_structured(data.get("structured"))
+    summary_txt    = data.get("summary", "")
+    notion_page_id = data.get("notion_page_id")
 
     doc = Document()
 
@@ -1020,9 +1027,13 @@ def export_lecture_docx():
 
     buf = io.BytesIO()
     doc.save(buf)
-    buf.seek(0)
 
     safe = "".join(c for c in lesson_name if c.isalnum() or c in " .-_()") or "שיעור"
+
+    if notion_page_id:
+        notion_sync.finalize_lecture_page(notion_page_id, buf.getvalue(), f"{safe}.docx")
+
+    buf.seek(0)
     return send_file(
         buf, as_attachment=True,
         download_name=f"{safe}.docx",

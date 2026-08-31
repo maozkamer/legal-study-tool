@@ -1082,6 +1082,7 @@ let recStructured     = null;
 let recSummaryText    = "";
 let recCurrentLesson  = "";
 let recSubject        = "";
+let recNotionPageId   = null;
 let recMode           = "mic";      // "mic" | "screen"
 let recAudioContext   = null;       // AudioContext for combined stream mixing
 let recAudioStream    = null;       // getDisplayMedia stream
@@ -1166,6 +1167,7 @@ async function recBeginRecording() {
   recPaused         = false;
   recStructured        = null;
   recSummaryText       = "";
+  recNotionPageId      = null;
   recAudioContext      = null;
   recAudioStream       = null;
 
@@ -1433,9 +1435,10 @@ async function doRecSummarize(summaryType) {
       return;
     }
 
-    recSummaryText = data.summary;
-    recStructured  = data.structured || null;
-    recSubject     = data.subject || "";
+    recSummaryText  = data.summary;
+    recStructured   = data.structured || null;
+    recSubject      = data.subject || "";
+    recNotionPageId = data.notion_page_id || null;
 
     recSummaryTypeBadge.textContent = summaryType === "short" ? "⚡ סיכום מקוצר" : "📄 סיכום מלא";
     recSummaryTypeBadge.style.display = "inline-flex";
@@ -1501,9 +1504,10 @@ recDocxBtn.addEventListener("click", async () => {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({
-        lesson_name: recCurrentLesson,
-        structured:  recStructured,
-        summary:     recSummaryText,
+        lesson_name:    recCurrentLesson,
+        structured:     recStructured,
+        summary:        recSummaryText,
+        notion_page_id: recNotionPageId,
       }),
     });
     if (!res.ok) { recShowError("שגיאה ביצוא Word"); return; }
@@ -1519,6 +1523,7 @@ recDocxBtn.addEventListener("click", async () => {
 // ── New recording ─────────────────────────────────────────────
 recNewBtn.addEventListener("click", () => {
   recLessonName.value = "";
+  recNotionPageId = null;
   recMode = "mic";
   recSummaryTypeBadge.style.display = "none";
   recShowState("setup");
